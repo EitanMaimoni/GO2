@@ -20,7 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            "video_subscriber = go2_command.video_subscriber:main",
+            "pose = go2_command.robot_pose_subscriber:main",
+            "image_viewer = go2_command.image_viewer:main",
         ],
     },
 )
