@@ -1,14 +1,11 @@
 import cv2
 import numpy as np
 from unitree_sdk2py.go2.video.video_client import VideoClient
-from detection import PersonDetector
-from robot_movement import RobotMovement
 
 class VideoHandler:
-    def __init__(self):
-        self.window_name = "front_camera"
-        cv2.namedWindow(self.window_name, cv2.WINDOW_NORMAL)
-        cv2.resizeWindow(self.window_name, 1600, 1600)
+    def __init__(self, window_name, window):
+        self.window_name = window_name
+        self.window = window
 
         # Initialize VideoClient
         self.client = VideoClient()
@@ -25,20 +22,13 @@ class VideoHandler:
             print("Get image sample error. code:", code)
             return None
 
-
     def display_image(self, image):
         if image is not None:
             cv2.imshow(self.window_name, image)
             cv2.waitKey(1)
         else:
             print("No image to display.")
-        
-        if cv2.waitKey(20) == 27:
-            self.cleanup()
-            exit(0)
             
     def cleanup(self):
-        cv2.destroyWindow(self.window_name)
-
-
-        
+        # Note: Don't destroy the window here since it's managed by main
+        pass
