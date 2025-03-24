@@ -1,18 +1,35 @@
-import time
-from unitree_sdk2py.go2.sport.sport_client import SportClient
+import signal
+import sys
+from unitree_sdk2py.go2.obstacles_avoid.obstacles_avoid_client import ObstaclesAvoidClient
 
 class RobotMovement:
     def __init__(self):
-        # Initialize SportClient for robot movement
-        self.sport_client = SportClient()
-        self.sport_client.SetTimeout(10.0)
-        self.sport_client.Init()
+        # Initialize ObstaclesAvoidClient for obstacle avoidance
+        self.obstacles_avoid_client = ObstaclesAvoidClient()
+        self.obstacles_avoid_client.SetTimeout(10.0)
+        self.obstacles_avoid_client.Init()
+        self.obstacles_avoid_client.UseRemoteCommandFromApi(True)
+
+        print("Enabling obstacle avoidance mode...")
+        self.obstacles_avoid_client.SwitchSet(True)
+        self.obstacles_avoid_client.Move(0, 0, 0)
 
         # Margin of error for angle (in degrees)
         self.angle_margin = 5.0
 
         # Distance threshold to stop walking (in meters)
         self.distance_threshold = 1.0  # Stop when the robot is 1 meter away from the person
+
+        # Register signal handler for Ctrl+C
+        signal.signal(signal.SIGINT, self.signal_handler)
+
+    def signal_handler(self, sig, frame):
+        """
+        Handle Ctrl+C signal.
+        """
+        print("\nCtrl+C detected. Stopping all movement and exiting...")
+        self.stop()
+        sys.exit(0)
 
     def walk_towards_target(self, angle, distance):
         """
@@ -26,7 +43,8 @@ class RobotMovement:
             self.walk_forward(distance)
         else:
             print("Reached the person. Stopping all movement.")
-            self.sport_client.StopMove()
+            self.obstacles_avoid_client.SwitchSet(True)
+
 
     def rotate(self, angle):
         """
@@ -35,10 +53,10 @@ class RobotMovement:
         # Rotate left or right based on the angle
         if angle > 0:
             print("Rotating left...")
-            self.sport_client.Move(0, 0, -0.5)  # Rotate left (negative angular velocity)
+            self.obstacles_avoid_client.Move(0, 0, -0.5)  # Rotate left (negative angular velocity)
         else:
             print("Rotating right...")
-            self.sport_client.Move(0, 0, 0.5)  # Rotate right (positive angular velocity)
+            self.obstacles_avoid_client.Move(0, 0, 0.5)  # Rotate right (positive angular velocity)
 
     def walk_forward(self, distance):
         """
@@ -47,25 +65,12 @@ class RobotMovement:
         print("Walking forward...")
         # Move forward based on the distance.
         speed = distance * 0.5 
-        self.sport_client.Move(speed, 0, 0)
+        self.obstacles_avoid_client.Move(speed, 0, 0)
     
     def stop(self):
         """
         Stop all movement.
         """
         print("Stopping all movement.")
-        self.sport_client.StopMove()
-
-    def stand_up(self):
-        """
-        Make the robot stand up.
-        """
-        print("Standing up...")
-        self.sport_client.StandUp()
-
-    def stand_down(self):
-        """
-        Make the robot stand down.
-        """
-        print("Standing down...")
-        self.sport_client.StandDown()
+        self.obstacles_avoid_client.Move(0, 0, 0)  # Stop obstacle avoidance movement
+        self.obstacles_avoid_client.UseRemoteCommandFromApi(False)
