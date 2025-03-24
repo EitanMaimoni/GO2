@@ -43,8 +43,7 @@ class RobotMovement:
             self.walk_forward(distance)
         else:
             print("Reached the person. Stopping all movement.")
-            self.obstacles_avoid_client.SwitchSet(True)
-
+            self.obstacles_avoid_client.Move(0, 0, 0)  # Stop obstacle avoidance movement
 
     def rotate(self, angle):
         """
