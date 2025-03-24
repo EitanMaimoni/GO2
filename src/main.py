@@ -37,9 +37,14 @@ def main():
             if image is not None:
                 # Detect person in the image
                 person_detected, distance, angle, image = detector.detect_person(image)
-                # Display the image (Original image. added bounding box if person detected)
-                video_handler.display_image(image)
 
+                # Display the image (Original image. added bounding box if person detected)
+                video_handler.display_image(image, distance, angle)
+
+                # images = detector.get_cropped_persons(image)
+                # if images:
+                #     video_handler.display_image(images[0], 0, 0)
+                
                 if person_detected:
                     # Walk towards the person
                     robot_movement.walk_towards_target(angle, distance)

@@ -35,7 +35,10 @@ class RobotMovement:
         """
         Walk towards the target (person) based on the angle and distance.
         """
-        if abs(angle) > self.angle_margin:
+        if abs(angle) > self.angle_margin and distance > self.distance_threshold:
+            print("Rotating to face the person and walking towards them...")
+            self.rotate_and_walk_forward(angle, distance)
+        elif abs(angle) > self.angle_margin:
             print("Rotating to face the person...")
             self.rotate(angle)
         elif distance > self.distance_threshold:
@@ -63,9 +66,20 @@ class RobotMovement:
         """
         print("Walking forward...")
         # Move forward based on the distance.
-        speed = distance * 0.5 
+        speed = distance * 0.75
         self.obstacles_avoid_client.Move(speed, 0, 0)
     
+    def rotate_and_walk_forward(self, angle, distance):
+        speed = distance * 0.5 
+
+        if angle > 0:
+            print("Rotating left...")
+            self.obstacles_avoid_client.Move(speed, 0, -0.5)  # Rotate left (negative angular velocity)
+        else:
+            print("Rotating right...")
+            self.obstacles_avoid_client.Move(speed, 0, 0.5)  # Rotate right (positive angular velocity)
+
+
     def stop(self):
         """
         Stop all movement.
