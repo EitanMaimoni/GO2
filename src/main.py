@@ -1,6 +1,8 @@
 import sys
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
-from video_client import VideoProcessor
+from video_handler import VideoHandler
+from detection import PersonDetector
+from robot_movement import RobotMovement
 
 if __name__ == "__main__":
     # Initialize DDS communication
@@ -14,8 +16,28 @@ if __name__ == "__main__":
     cfg_path = "../model/yolov4.cfg"
     names_path = "../model/coco.names"
 
-    # Initialize video processor
-    processor = VideoProcessor(weights_path, cfg_path, names_path)
+    # Initialize video handler
+    video_handler = VideoHandler()
 
-    # Process video
-    processor.process_video()
+    # Initialize person detector
+    detector = PersonDetector(weights_path, cfg_path, names_path)
+
+    # Initialize robot movement
+    robot_movement = RobotMovement()
+
+    while True:
+        # Get image from Go2 robot
+        image = video_handler.get_image()
+
+        if image is not None:
+            # Detect person in the image
+            person_detected, distance, angle, image = detector.detect_person(image)
+            # Display the image (Original image. added bounding box if person detected)
+            video_handler.display_image(image)
+
+            if person_detected:
+                # Walk towards the person
+                robot_movement.walk_towards_target(angle, distance)
+    
+        else:
+            print("Received bad image, ignoring...")
