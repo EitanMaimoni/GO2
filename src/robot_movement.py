@@ -1,16 +1,9 @@
-import time
 import signal
 import sys
-from unitree_sdk2py.go2.sport.sport_client import SportClient
 from unitree_sdk2py.go2.obstacles_avoid.obstacles_avoid_client import ObstaclesAvoidClient
 
 class RobotMovement:
     def __init__(self):
-        # Initialize SportClient for robot movement
-        self.sport_client = SportClient()
-        self.sport_client.SetTimeout(10.0)
-        self.sport_client.Init()
-
         # Initialize ObstaclesAvoidClient for obstacle avoidance
         self.obstacles_avoid_client = ObstaclesAvoidClient()
         self.obstacles_avoid_client.SetTimeout(10.0)
@@ -20,8 +13,6 @@ class RobotMovement:
         print("Enabling obstacle avoidance mode...")
         self.obstacles_avoid_client.SwitchSet(True)
         self.obstacles_avoid_client.Move(0, 0, 0)
-
-
 
         # Margin of error for angle (in degrees)
         self.angle_margin = 5.0
@@ -52,8 +43,7 @@ class RobotMovement:
             self.walk_forward(distance)
         else:
             print("Reached the person. Stopping all movement.")
-            self.obstacles_avoid_client.SwitchSet(True)
-
+            self.obstacles_avoid_client.Move(0, 0, 0)  # Stop obstacle avoidance movement
 
     def rotate(self, angle):
         """
@@ -81,21 +71,5 @@ class RobotMovement:
         Stop all movement.
         """
         print("Stopping all movement.")
-        self.sport_client.StopMove()
         self.obstacles_avoid_client.Move(0, 0, 0)  # Stop obstacle avoidance movement
         self.obstacles_avoid_client.UseRemoteCommandFromApi(False)
-
-
-    def stand_up(self):
-        """
-        Make the robot stand up.
-        """
-        print("Standing up...")
-        self.sport_client.StandUp()
-
-    def stand_down(self):
-        """
-        Make the robot stand down.
-        """
-        print("Standing down...")
-        self.sport_client.StandDown()
