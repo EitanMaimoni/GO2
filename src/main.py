@@ -45,9 +45,9 @@ def main():
                 # if images:
                 #     video_handler.display_image(images[0], 0, 0)
                 
-                if person_detected:
-                    # Walk towards the person
-                    robot_movement.walk_towards_target(angle, distance)
+                # if person_detected:
+                #     # Walk towards the person
+                #     robot_movement.walk_towards_target(angle, distance)
         
             else:
                 print("Received bad image, ignoring...")
