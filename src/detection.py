@@ -116,45 +116,55 @@ class PersonDetector:
 
         return cropped_images
 
-    def _validate_bbox(self, x, y, w, h, img_width, img_height):
-        """Ensure bounding box stays within image boundaries"""
-        x = max(0, x)
-        y = max(0, y)
-        w = min(w, img_width - x)
-        h = min(h, img_height - y)
-        return x, y, w, h
-
-    def _resize_with_aspect(self, image, target_size):
-        """
-        Resize image while maintaining aspect ratio
-        Returns None if input is invalid
-        """
-        if image is None or image.size == 0:
-            return None
-
-        target_w, target_h = target_size
-        h, w = image.shape[:2]
-        
-        # Handle potential division by zero
-        if w == 0 or h == 0:
-            return None
-        
-        # Calculate ratio and new dimensions
-        ratio = min(target_w/w, target_h/h)
-        new_w, new_h = int(w * ratio), int(h * ratio)
-        
-        try:
-            # Resize image
-            resized = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_AREA)
+    def detect_specific_person_appearance(self, image, model, pca, confidence_threshold=0):
+        """Detect if a specific person is in the image based on appearance"""
+        cropped_images = self.get_cropped_persons(image)
+        for person_img in cropped_images:
+            # Extract appearance features
+            features = self.extract_appearance_features(person_img)
             
-            # Create blank canvas of target size
-            canvas = np.zeros((target_h, target_w, 3), dtype=np.uint8)
+            # Apply PCA transformation
+            features_reduced = pca.transform([features])
             
-            # Calculate padding and center the image
-            dx = (target_w - new_w) // 2
-            dy = (target_h - new_h) // 2
-            canvas[dy:dy+new_h, dx:dx+new_w] = resized
+            # Predict with our model
+            if hasattr(model, 'predict_proba'):  # For regular SVM
+                prediction = model.predict_proba(features_reduced)
+                confidence = prediction[0][1]  # Probability it's our person
+            else:  # For OneClassSVM
+                decision_score = model.decision_function(features_reduced)
+                # Convert decision score to a confidence-like value (0-1 range)
+                confidence = 1 / (1 + np.exp(-decision_score[0]))  # Sigmoid transformation
             
-            return canvas
-        except:
-            return None
+            if confidence > confidence_threshold:
+                return True, float(confidence), person_img  # Explicitly convert to float
+        return False, 0.0, None
+    
+    def extract_appearance_features(self, image):
+        """Extract color and texture features (same as in AppearanceModelManager)"""
+        # Resize to consistent dimensions
+        resized = cv2.resize(image, (128, 256))
+        
+        # Color features (mean and std of each channel in HSV space)
+        hsv = cv2.cvtColor(resized, cv2.COLOR_BGR2HSV)
+        h_mean, h_std = np.mean(hsv[:,:,0]), np.std(hsv[:,:,0])
+        s_mean, s_std = np.mean(hsv[:,:,1]), np.std(hsv[:,:,1])
+        v_mean, v_std = np.mean(hsv[:,:,2]), np.std(hsv[:,:,2])
+        
+        # Texture features (using histogram of oriented gradients)
+        gray = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
+        hog = self._calculate_hog(gray)
+        
+        # Combine all features
+        features = np.array([
+            h_mean, h_std, s_mean, s_std, v_mean, v_std,
+            *hog
+        ])
+        
+        return features
+    
+    def _calculate_hog(self, gray_image, bins=9, pixels_per_cell=(8,8), cells_per_block=(2,2)):
+        """Calculate Histogram of Oriented Gradients"""
+        from skimage.feature import hog
+        features = hog(gray_image, orientations=bins, pixels_per_cell=pixels_per_cell,
+                      cells_per_block=cells_per_block, block_norm='L2-Hys', feature_vector=True)
+        return features

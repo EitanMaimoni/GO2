@@ -3,9 +3,8 @@ import numpy as np
 from unitree_sdk2py.go2.video.video_client import VideoClient
 
 class VideoHandler:
-    def __init__(self, window_name, window):
+    def __init__(self, window_name):
         self.window_name = window_name
-        self.window = window
 
         # Initialize VideoClient
         self.client = VideoClient()
@@ -29,7 +28,7 @@ class VideoHandler:
             print(f"Error getting image: {str(e)}")
             return None
 
-    def display_image(self, image,distance, angle):
+    def display_image(self, image, distance, angle):
         try:
             if image is None or image.size == 0:
                 print("Warning: Cannot display empty/None image")
@@ -72,7 +71,3 @@ class VideoHandler:
         except Exception as e:
             print(f"Error displaying image: {str(e)}")
             
-            
-    def cleanup(self):
-        # Note: Don't destroy the window here since it's managed by main
-        pass
