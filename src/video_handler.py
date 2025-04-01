@@ -5,6 +5,8 @@ from unitree_sdk2py.go2.video.video_client import VideoClient
 class VideoHandler:
     def __init__(self, window_name):
         self.window_name = window_name
+        cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+        cv2.resizeWindow(window_name, 1600, 1600)
 
         # Initialize VideoClient
         self.client = VideoClient()
@@ -28,7 +30,7 @@ class VideoHandler:
             print(f"Error getting image: {str(e)}")
             return None
 
-    def display_image(self, image, distance, angle):
+    def display_image(self, image, distance = 0, angle = 0):
         try:
             if image is None or image.size == 0:
                 print("Warning: Cannot display empty/None image")
@@ -65,6 +67,7 @@ class VideoHandler:
             cv2.putText(image, angle_text, (text_x, text_y), 
                     font, font_scale, font_color, thickness)
             
+
             cv2.imshow(self.window_name, image)
             cv2.waitKey(1)
             

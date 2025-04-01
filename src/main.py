@@ -153,13 +153,18 @@ def follow_person(model_manager, video_handler, detector, robot):
                 continue
                 
             visualized_frame, person_detected = follower.process_frame(frame)
-            video_handler.display_image(visualized_frame, 0, 0)
+            
 
             # Uncomment the following lines after finishing deb
-            # if person_detected:
-            #     # Walk towards the person
-            #     robot.walk_towards_target(0, 0)
-            
+            if person_detected:
+                video_handler.display_image(visualized_frame, person_detected['angle'], person_detected['distance'])
+                # Walk towards the person
+                # robot.walk_towards_target(person_detected['angle'], person_detected['distance'])
+            else:
+                video_handler.display_image(visualized_frame, 0, 0)
+                # Stop robot movement if no person detected
+                # robot.walk_towards_target(0, 0)
+
             if cv2.waitKey(1) == 27:  # ESC key
                 break
                 

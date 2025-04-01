@@ -56,9 +56,10 @@ class SpecificPersonFollower:
             - processed_image: Input image with color-coded bounding boxes
             - target_detection: Dictionary with target person's detection info or None
         """
+        all_detections = self.detector.detect_persons(image)
         processed_image = image.copy()
-        _, all_detections = self.detector.detect_persons(image)
         target_detection = None
+        
         
         for detection in all_detections:
             x, y, w, h = detection['box']

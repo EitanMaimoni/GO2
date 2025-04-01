@@ -55,7 +55,6 @@ class PersonDetector:
                 - 'angle': Estimated angle to person in degrees
         """
         height, width = image.shape[:2]
-        processed_image = image.copy()
         detections = []
 
         # Detect objects using YOLO
@@ -84,11 +83,8 @@ class PersonDetector:
                     if w <= 0 or h <= 0:
                         continue
 
-                    # Draw bounding box
-                    cv2.rectangle(processed_image, (x, y), (x + w, y + h), (0, 255, 0), 2)
-
                     # Calculate distance and angle
-                    distance = (self.known_person_height * self.focal_length) / h
+                    distance = y
                     angle = ((center_x - (width / 2)) / (width / 2)) * (self.fov / 2)
 
                     # Store detection info
@@ -98,7 +94,7 @@ class PersonDetector:
                         'angle': angle
                     })
 
-        return processed_image, detections
+        return detections
 
     def get_first_person(self, image, target_size=(128*4, 256*4)):
         """
