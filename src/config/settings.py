@@ -15,7 +15,6 @@ class Settings:
         self.yolo_names = os.path.join(self.models_dir, "coco.names")
         
         # Camera settings
-        self.camera_window_name = "Person Recognition"
         self.camera_timeout = 3.0
         
         # Person recognition settings

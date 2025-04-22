@@ -81,7 +81,7 @@ class RobotController:
         """
         print("Walking forward...")
         # Move forward based on the distance.
-        speed = min(distance * self.params.forward_speed_factor, 1.0)  # Cap max speed
+        speed = min(distance * self.params.forward_speed_factor, 0.1)  # Cap max speed
         self.obstacles_avoid_client.Move(speed, 0, 0)
     
     def _rotate_and_walk_forward(self, angle, distance):

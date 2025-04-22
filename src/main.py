@@ -16,7 +16,7 @@ from hardware.robot import RobotController
 
 from models.model_manager import ModelManager
 
-from ui.cli import CommandLineInterface
+from ui.gui import GUIInterface
 
 class PersonFollowingSystem:
     def __init__(self):
@@ -42,8 +42,8 @@ class PersonFollowingSystem:
 
 if __name__ == "__main__":
     system = PersonFollowingSystem()
-    cli = CommandLineInterface(system)
-    cli.start()
+    gui = GUIInterface(system)
+    gui.start()
 from config.settings import Settings
 from config.robot_params import RobotParams
 
@@ -57,7 +57,7 @@ from hardware.robot import RobotController
 
 from models.model_manager import ModelManager
 
-from ui.cli import CommandLineInterface
+from ui.gui import CommandLineInterface
 
 class PersonFollowingSystem:
     def __init__(self):
@@ -83,5 +83,5 @@ class PersonFollowingSystem:
 
 if __name__ == "__main__":
     system = PersonFollowingSystem()
-    cli = CommandLineInterface(system)
-    cli.start()
+    gui = CommandLineInterface(system)
+    gui.start()

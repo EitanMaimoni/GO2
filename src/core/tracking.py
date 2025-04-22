@@ -25,6 +25,10 @@ class PersonTracker:
             tuple: (visualized_frame, target_info)
                 - visualized_frame: Frame with visualization
                 - target_info: Dictionary with target info or None if not found
+                The dictionary containing:
+                    - 'box': (x, y, w, h) bounding box coordinates
+                    - 'distance': Estimated distance to person in meters
+                    - 'angle': Estimated angle to person in degrees
         """
         if frame is None:
             return None, None

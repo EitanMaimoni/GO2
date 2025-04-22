@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import math
 
 class PersonDetector:
     """
@@ -77,8 +78,13 @@ class PersonDetector:
                         continue
 
                     # Calculate distance and angle
-                    distance = y
-                    angle = ((center_x - (width / 2)) / (width / 2)) * (self.robot_params.camera_fov / 2)
+                    # Adjust the x and y values to make the origin at the bottom-center of the image
+                    x_adjusted = x - (width / 2)
+                    y_adjusted = height - (y + h)  # Invert y so that 0 is at the bottom of the image
+
+                    # Calculate distance using adjusted coordinates
+                    distance = self.calculate_distance(x_adjusted, y_adjusted)
+                    angle = self._calculate_angle(center_x, width)
 
                     # Store detection info
                     detections.append({
@@ -97,7 +103,13 @@ class PersonDetector:
             image: Input image (numpy array)
                 
         Returns:
-            tuple: (cropped_image, detection_info) or (None, None) if no person is detected
+            tuple: (cropped_image, detection_info) or (None, None) if no person is detected.
+                - cropped_image: Cropped image of the detected person
+                - detection_info:
+                    Dictionary containing detection info:
+                    - 'box': (x, y, w, h) bounding box coordinates
+                    - 'distance': Estimated distance to person in meters
+                    - 'angle': Estimated angle to person in degrees
         """
         if image is None:
             return None, None
@@ -141,3 +153,31 @@ class PersonDetector:
         w = min(w, img_width - x)
         h = min(h, img_height - y)
         return x, y, w, h
+    
+    def calculate_distance(self, x, y):
+        """
+        Calculate distance to the person based on the y-coordinate.
+        
+        Args:
+            x: X-coordinate of the bounding box center
+            y: Y-coordinate of the bounding box center
+            
+        Returns:
+            float: Estimated distance in meters
+        """
+        # Calculate distance using the Pythagorean theorem and scaling the result
+        return math.sqrt(x**2 + y**2) / 100
+
+
+    def _calculate_angle(self, center_x, img_width):
+        """
+        Calculate angle to the person based on the x-coordinate.
+        
+        Args:
+            center_x: X-coordinate of the bounding box center
+            img_width: Width of the image
+            
+        Returns:
+            float: Estimated angle in degrees
+        """
+        return ((center_x - (img_width / 2)) / (img_width / 2)) * (self.robot_params.camera_fov / 2)
