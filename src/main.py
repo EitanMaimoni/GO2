@@ -1,57 +1,87 @@
-import sys
-import cv2
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
-from video_handler import VideoHandler
-from detection import PersonDetector
-from robot_movement import RobotMovement
 
-def main():
-    # Initialize DDS communication
-    if len(sys.argv) > 1:
-        ChannelFactoryInitialize(0, sys.argv[1])  # Pass network interface as argument
-    else:
-        ChannelFactoryInitialize(0)  # Use default network interface
+# DDS must be initialized BEFORE any Unitree SDK component
+ChannelFactoryInitialize(0)
 
-    # Paths to YOLO files
-    weights_path = "../model/yolov4.weights"
-    cfg_path = "../model/yolov4.cfg"
-    names_path = "../model/coco.names"
+from config.settings import Settings
+from config.robot_params import RobotParams
 
-    # Initialize video handler
-    window_name = "front_camera"
-    cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
-    cv2.resizeWindow(window_name, 1600, 1600)
-    video_handler = VideoHandler(window_name, window_name)  # Passing name is enough
+from core.detection import PersonDetector
+from core.recognition import FeatureExtractor, PersonRecognizer
+from core.tracking import PersonTracker
+from core.visualization import Visualizer
 
-    # Initialize person detector
-    detector = PersonDetector(weights_path, cfg_path, names_path)
+from hardware.camera import Camera
+from hardware.robot import RobotController
 
-    # Initialize robot movement
-    robot_movement = RobotMovement()
+from models.model_manager import ModelManager
 
-    try:
-        while True:
-            # Get image from Go2 robot
-            image = video_handler.get_image()
+from ui.cli import CommandLineInterface
 
-            if image is not None:
-                # Detect person in the image
-                person_detected, distance, angle, image = detector.detect_person(image)
-                # Display the image (Original image. added bounding box if person detected)
-                video_handler.display_image(image)
+class PersonFollowingSystem:
+    def __init__(self):
+        self.settings = Settings()
+        self.settings.robot_params = RobotParams()
 
-                if person_detected:
-                    # Walk towards the person
-                    robot_movement.walk_towards_target(angle, distance)
-        
-            else:
-                print("Received bad image, ignoring...")
+        self.camera = Camera(self.settings)
+        self.detector = PersonDetector(self.settings)
 
-            if cv2.waitKey(20) == 27:
-                robot_movement.stop()
-                break
-    finally:
-        cv2.destroyAllWindows()
-    
+        self.feature_extractor = FeatureExtractor(self.settings)
+        self.model_manager = ModelManager(self.settings)
+        self.model_manager.set_feature_extractor(self.feature_extractor)
+
+        self.recognizer = PersonRecognizer(self.feature_extractor, self.model_manager)
+        self.tracker = PersonTracker(self.detector, self.recognizer)
+        self.visualizer = Visualizer()
+
+        self.robot = RobotController(self.settings.robot_params)
+
+    def cleanup(self):
+        self.camera.release()
+        self.robot.stop()
+
 if __name__ == "__main__":
-    main()
+    system = PersonFollowingSystem()
+    cli = CommandLineInterface(system)
+    cli.start()
+from config.settings import Settings
+from config.robot_params import RobotParams
+
+from core.detection import PersonDetector
+from core.recognition import FeatureExtractor, PersonRecognizer
+from core.tracking import PersonTracker
+from core.visualization import Visualizer
+
+from hardware.camera import Camera
+from hardware.robot import RobotController
+
+from models.model_manager import ModelManager
+
+from ui.cli import CommandLineInterface
+
+class PersonFollowingSystem:
+    def __init__(self):
+        self.settings = Settings()
+        self.settings.robot_params = RobotParams()
+
+        self.camera = Camera(self.settings)
+        self.detector = PersonDetector(self.settings)
+
+        self.feature_extractor = FeatureExtractor(self.settings)
+        self.model_manager = ModelManager(self.settings)
+        self.model_manager.set_feature_extractor(self.feature_extractor)
+
+        self.recognizer = PersonRecognizer(self.feature_extractor, self.model_manager)
+        self.tracker = PersonTracker(self.detector, self.recognizer)
+        self.visualizer = Visualizer()
+
+        self.robot = RobotController(self.settings.robot_params)
+
+    def cleanup(self):
+        self.camera.release()
+        self.robot.stop()
+
+if __name__ == "__main__":
+    system = PersonFollowingSystem()
+    cli = CommandLineInterface(system)
+    cli.start()
