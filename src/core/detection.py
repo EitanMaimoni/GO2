@@ -34,73 +34,64 @@ class PersonDetector:
 
     def detect_persons(self, image):
         """
-        Detect all persons in an image.
+        Detect all persons in an image using YOLO and apply NMS.
         
-        Args:
-            image: Input image (numpy array)
-            
         Returns:
-            list: List of dictionaries containing detection info for each person:
-                - 'box': (x, y, w, h) bounding box coordinates
-                - 'distance': Estimated distance to person in meters
-                - 'angle': Estimated angle to person in degrees
+            list: List of dictionaries with 'box', 'distance', 'angle'
         """
         if image is None:
             return []
-            
+
         height, width = image.shape[:2]
         detections = []
 
-        # Detect objects using YOLO
+        # Prepare input blob
         blob = cv2.dnn.blobFromImage(image, 0.00392, (320, 320), (0, 0, 0), True, crop=False)
         self.net.setInput(blob)
         outs = self.net.forward(self.output_layers)
 
-        # Process detections
+        boxes = []
+        confidences = []
+
         for out in outs:
             for detection in out:
-                if any([
-                    math.isnan(detection[0]), math.isinf(detection[0]),
-                    math.isnan(detection[1]), math.isinf(detection[1]),
-                    math.isnan(detection[2]), math.isinf(detection[2]),
-                    math.isnan(detection[3]), math.isinf(detection[3]),
-                ]):
-                    continue
                 scores = detection[5:]
                 class_id = np.argmax(scores)
                 confidence = scores[class_id]
-                
                 if confidence > self.confidence_threshold and self.classes[class_id] == 'person':
-                    # Get bounding box coordinates
                     center_x = int(detection[0] * width)
                     center_y = int(detection[1] * height)
                     w = int(detection[2] * width)
                     h = int(detection[3] * height)
                     x = int(center_x - w / 2)
                     y = int(center_y - h / 2)
+                    boxes.append([x, y, w, h])
+                    confidences.append(float(confidence))
 
-                    # Validate bounding box
-                    x, y, w, h = self._validate_bbox(x, y, w, h, width, height)
-                    if w <= 0 or h <= 0:
-                        continue
+        # Apply Non-Maximum Suppression
+        indices = cv2.dnn.NMSBoxes(boxes, confidences, self.confidence_threshold, 0.4)
 
-                    # Calculate distance and angle
-                    # Adjust the x and y values to make the origin at the bottom-center of the image
-                    x_adjusted = x - (width / 2)
-                    y_adjusted = height - (y + h)  # Invert y so that 0 is at the bottom of the image
+        for i in indices:
+            i = i[0] if isinstance(i, (list, np.ndarray)) else i
+            x, y, w, h = boxes[i]
+            x, y, w, h = self._validate_bbox(x, y, w, h, width, height)
+            if w <= 0 or h <= 0:
+                continue
 
-                    # Calculate distance using adjusted coordinates
-                    distance = self._calculate_distance(x_adjusted, y_adjusted)
-                    angle = self._calculate_angle(center_x, width)
+            x_adjusted = x - (width / 2)
+            y_adjusted = height - (y + h)
 
-                    # Store detection info
-                    detections.append({
-                        'box': (x, y, w, h),
-                        'distance': distance,
-                        'angle': angle
-                    })
+            distance = self._calculate_distance(x_adjusted, y_adjusted)
+            angle = self._calculate_angle(x + w / 2, width)
+
+            detections.append({
+                'box': (x, y, w, h),
+                'distance': distance,
+                'angle': angle
+            })
 
         return detections
+
 
     def get_first_person(self, image):
         """

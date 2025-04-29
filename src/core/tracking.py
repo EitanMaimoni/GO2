@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import math
+import time
 from sklearn.metrics.pairwise import cosine_similarity
 
 class PersonTracker:
@@ -40,6 +41,7 @@ class PersonTracker:
         height, width = frame.shape[:2]
 
         detections = self.detector.detect_persons(frame)
+        print(f"[Detection] Found {len(detections)} persons")
         for detection in detections:
             x, y, w, h = detection['box']
             person_img = frame[y:y+h, x:x+w]
@@ -50,11 +52,17 @@ class PersonTracker:
             feature = self.feature_extractor.extract(person_img)
             if feature is None:
                 continue
+            
+            start = time.perf_counter()
 
             similarities = cosine_similarity(feature, gallery_features)[0]
-            max_similarity = np.max(similarities)
-            is_target = max_similarity >= self.similarity_threshold
-            confidence = float(max_similarity)
+            top_k = min(5, len(similarities))
+            top_k_similarities = np.sort(similarities)[-top_k:]
+            confidence = np.mean(top_k_similarities)
+            is_target = confidence >= self.similarity_threshold
+
+            elapsed = time.perf_counter() - start
+            print(f"[Timing] Similarity calc took {elapsed:.6f}s")
 
             color = (0, 255, 0) if is_target else (0, 0, 255)
             cv2.rectangle(visualized_frame, (x, y), (x+w, y+h), color, 2)

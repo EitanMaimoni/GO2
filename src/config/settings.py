@@ -10,8 +10,8 @@ class Settings:
         self.persons_dir = os.path.join(self.base_dir, "../persons")
         
         # YOLO model paths
-        self.yolo_weights = os.path.join(self.models_dir, "yolov4.weights")
-        self.yolo_cfg = os.path.join(self.models_dir, "yolov4.cfg")
+        self.yolo_weights = os.path.join(self.models_dir, "yolov4-tiny.weights")
+        self.yolo_cfg = os.path.join(self.models_dir, "yolov4-tiny.cfg")
         self.yolo_names = os.path.join(self.models_dir, "coco.names")
         
         # Camera settings
