@@ -25,3 +25,6 @@ class Settings:
         
         # Detection settings
         self.detection_confidence = 0.75
+
+        # Tracking settings
+        self.similarity_threshold = 0.8

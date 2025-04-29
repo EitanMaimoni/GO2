@@ -59,6 +59,13 @@ class PersonDetector:
         # Process detections
         for out in outs:
             for detection in out:
+                if any([
+                    math.isnan(detection[0]), math.isinf(detection[0]),
+                    math.isnan(detection[1]), math.isinf(detection[1]),
+                    math.isnan(detection[2]), math.isinf(detection[2]),
+                    math.isnan(detection[3]), math.isinf(detection[3]),
+                ]):
+                    continue
                 scores = detection[5:]
                 class_id = np.argmax(scores)
                 confidence = scores[class_id]
@@ -83,7 +90,7 @@ class PersonDetector:
                     y_adjusted = height - (y + h)  # Invert y so that 0 is at the bottom of the image
 
                     # Calculate distance using adjusted coordinates
-                    distance = self.calculate_distance(x_adjusted, y_adjusted)
+                    distance = self._calculate_distance(x_adjusted, y_adjusted)
                     angle = self._calculate_angle(center_x, width)
 
                     # Store detection info
@@ -154,7 +161,7 @@ class PersonDetector:
         h = min(h, img_height - y)
         return x, y, w, h
     
-    def calculate_distance(self, x, y):
+    def _calculate_distance(self, x, y):
         """
         Calculate distance to the person based on the y-coordinate.
         

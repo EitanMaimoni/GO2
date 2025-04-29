@@ -102,7 +102,7 @@ class GUIInterface:
 
                 person_img, _ = self.system.detector.get_first_person(frame)
                 self.latest_image = frame
-                self.latest_person = person_img  # ✅ Store the detected person
+                self.latest_person = person_img 
 
                 display = person_img if person_img is not None else frame
                 self._update_preview(display)
