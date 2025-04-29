@@ -5,6 +5,8 @@ from PIL import Image, ImageTk
 import threading
 import io
 import sys
+import numpy as np
+import time
 
 class GUIInterface:
     """Unified full-screen GUI for the person-following system with embedded control, preview, and console."""
@@ -18,9 +20,8 @@ class GUIInterface:
 
         self._build_layout()
         self.capture_mode = False
-
-        self.latest_image = None     
-        self.latest_person = None    
+        self.latest_image = None
+        self.latest_person = None
 
     def _build_layout(self):
         self.main_frame = tk.Frame(self.root, bg="#1f1f2e")
@@ -48,7 +49,7 @@ class GUIInterface:
 
     def start(self):
         self.root.mainloop()
-    
+
     def show_create_panel(self):
         self.clear_input_frame()
         ttk.Label(self.input_frame, text="Enter person name:", background="#2a2a3d", foreground="white").pack(pady=10)
@@ -63,7 +64,6 @@ class GUIInterface:
                 self.create_model(name)
 
         ttk.Button(self.input_frame, text="Start Capture", command=start_capture).pack(pady=10)
-
 
     def show_follow_panel(self):
         self.clear_input_frame()
@@ -102,14 +102,14 @@ class GUIInterface:
 
                 person_img, _ = self.system.detector.get_first_person(frame)
                 self.latest_image = frame
-                self.latest_person = person_img 
+                self.latest_person = person_img
 
                 display = person_img if person_img is not None else frame
                 self._update_preview(display)
 
         def on_key_press(event):
             if event.keysym == 'Return':
-                if self.latest_image is not None and self.latest_person is not None:
+                if self.latest_person is not None:
                     self.system.model_manager.save_image(name, self.latest_person)
                     self.capture_count += 1
                     print(f"[INFO] Saved image {self.capture_count}")
@@ -119,90 +119,86 @@ class GUIInterface:
                 self.capture_mode = False
                 print("[INFO] Training model... please wait.")
                 try:
-                    self.system.model_manager.train_model(name)
+                    self.system.model_manager.train_model_osnet(name)
                     print(f"[SUCCESS] Model trained successfully for {name}.")
                 except Exception as e:
                     print(f"[ERROR] Training failed: {e}")
+                self.root.unbind("<Key>")
 
         self.root.bind("<Key>", on_key_press)
         threading.Thread(target=loop, daemon=True).start()
 
     def follow_person(self, person_name):
-        if not self.system.recognizer.load_target(person_name):
-            print("[ERROR] Failed to load model.")
+        try:
+            gallery_path = f"{self.system.model_manager.base_dir}/{person_name}/gallery/features.npy"
+            gallery_features = np.load(gallery_path)
+        except Exception as e:
+            print(f"[ERROR] Failed to load features: {e}")
             return
 
         print("[INFO] Press ESC to stop following.")
-        
-        # Set the capture mode to True - this was missing
         self.capture_mode = True
 
         def loop():
+            last_seen_time = time.time()
+
             while self.capture_mode:
                 frame = self.system.camera.get_frame()
                 if frame is None:
                     continue
 
-                # Track the target (person)
-                person_img, target_info = self.system.tracker.track_target(frame)
+                person_img, target_info = self.system.tracker.track_target(frame, gallery_features)
 
                 if person_img is not None:
-                    # Annotate the frame with tracking information
-                    annotated_frame = self.system.visualizer.draw_tracking_info(
-                        person_img,
-                        distance=target_info['distance'] if target_info else 0,
-                        angle=target_info['angle'] if target_info else 0
-                    )
-
-                    # Display the annotated frame in the GUI
-                    self._update_preview(annotated_frame)
-
-                    # Move the robot based on the tracking info
-                    if target_info:
-                        self.system.robot.follow_target(target_info['angle'], target_info['distance'])
+                    if target_info is not None:
+                        annotated = self.system.visualizer.draw_tracking_info(
+                            person_img,
+                            distance=target_info.get("distance", 0),
+                            angle=target_info.get("angle", 0),
+                            confidence=target_info.get("confidence", 0)
+                        )
+                        self._update_preview(annotated)
+                        self.system.robot.follow_target(target_info["angle"], target_info["distance"])
+                        last_seen_time = time.time()
                     else:
+                        self._update_preview(person_img)
                         self.system.robot.follow_target(0, 0)
-
                 else:
-                    # If no person is detected, show the raw frame
                     self._update_preview(frame)
+                    self.system.robot.follow_target(0, 0)
 
-        # Bind the ESC key to stop following
+                if time.time() - last_seen_time >= 3.0:
+                    self.system.robot.follow_target(0, 0)
+
         def on_key_press(event):
             if event.keysym == 'Escape':
                 self.capture_mode = False
-                self.system.robot.follow_target(0, 0) # Stop the robot
+                self.system.robot.follow_target(0, 0)
                 print("[INFO] Stopped following.")
-                self.root.unbind("<Key>")  # Remove the binding when done
+                self.root.unbind("<Key>")
 
-        # Bind the key event
         self.root.bind("<Key>", on_key_press)
-        
-        # Start the tracking loop in a separate thread
         threading.Thread(target=loop, daemon=True).start()
 
-    # Overriding OpenCV preview window by avoiding any namedWindow call
     def _update_preview(self, image):
         rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         img = Image.fromarray(rgb)
 
-        # Resize the image to fit the label
         label_width = self.preview_label.winfo_width()
         label_height = self.preview_label.winfo_height()
         if label_width > 0 and label_height > 0:
             img = img.resize((label_width, label_height), Image.Resampling.LANCZOS)
-
 
         imgtk = ImageTk.PhotoImage(image=img)
         self.latest_image = image
         self.preview_label.imgtk = imgtk
         self.preview_label.configure(image=imgtk)
 
-
     def cleanup(self):
         print("[INFO] Cleaning up and exiting application.")
         self.system.cleanup()
         self.root.destroy()
+
 
 class TextRedirector(object):
     def __init__(self, widget, tag):

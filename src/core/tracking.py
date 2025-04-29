@@ -56,7 +56,7 @@ class PersonTracker:
             start = time.perf_counter()
 
             similarities = cosine_similarity(feature, gallery_features)[0]
-            top_k = min(5, len(similarities))
+            top_k = min(50, len(similarities))
             top_k_similarities = np.sort(similarities)[-top_k:]
             confidence = np.mean(top_k_similarities)
             is_target = confidence >= self.similarity_threshold
@@ -75,13 +75,15 @@ class PersonTracker:
                 if confidence > highest_confidence:
                     highest_confidence = confidence
 
-                    x_adjusted = x - (width / 2)
-                    y_adjusted = height - (y + h)
+                    x_center = x + w / 2
+                    y_bottom = y + h
+                    x_adjusted = x_center - (width / 2)
+                    y_adjusted = height - y_bottom
 
                     target_detection = {
                         'box': (x, y, w, h),
                         'confidence': confidence,
-                        'distance': self._estimate_distance(x_adjusted, y_adjusted),
+                        'distance': self._estimate_distance_from_bottom(y_adjusted),
                         'angle': self._estimate_angle(x + w/2, width)
                     }
             else:
@@ -91,9 +93,8 @@ class PersonTracker:
 
         return visualized_frame, target_detection
 
-    def _estimate_distance(self, x, y):
-        return math.sqrt(x**2 + y**2) / 100
-
+    def _estimate_distance_from_bottom(self, y_from_bottom):
+        return y_from_bottom / 100
 
     def _estimate_angle(self, center_x, img_width):
         # 70 is the pove of camera, need to do it threw settings

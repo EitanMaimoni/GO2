@@ -6,7 +6,7 @@ class RobotParams:
         self.angle_margin = 7.0  # Degrees
         self.distance_threshold = 3.5  # Meters
         self.rotation_speed = 0.35
-        self.forward_speed_factor = 0.35
+        self.forward_speed_factor = 0.5
         self.combined_speed_factor = 0.5
         
         # Camera parameters
