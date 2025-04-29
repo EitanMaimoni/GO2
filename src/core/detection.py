@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import math
 
 class PersonDetector:
     """
@@ -33,61 +34,64 @@ class PersonDetector:
 
     def detect_persons(self, image):
         """
-        Detect all persons in an image.
+        Detect all persons in an image using YOLO and apply NMS.
         
-        Args:
-            image: Input image (numpy array)
-            
         Returns:
-            list: List of dictionaries containing detection info for each person:
-                - 'box': (x, y, w, h) bounding box coordinates
-                - 'distance': Estimated distance to person in meters
-                - 'angle': Estimated angle to person in degrees
+            list: List of dictionaries with 'box', 'distance', 'angle'
         """
         if image is None:
             return []
-            
+
         height, width = image.shape[:2]
         detections = []
 
-        # Detect objects using YOLO
+        # Prepare input blob
         blob = cv2.dnn.blobFromImage(image, 0.00392, (320, 320), (0, 0, 0), True, crop=False)
         self.net.setInput(blob)
         outs = self.net.forward(self.output_layers)
 
-        # Process detections
+        boxes = []
+        confidences = []
+
         for out in outs:
             for detection in out:
                 scores = detection[5:]
                 class_id = np.argmax(scores)
                 confidence = scores[class_id]
-                
                 if confidence > self.confidence_threshold and self.classes[class_id] == 'person':
-                    # Get bounding box coordinates
                     center_x = int(detection[0] * width)
                     center_y = int(detection[1] * height)
                     w = int(detection[2] * width)
                     h = int(detection[3] * height)
                     x = int(center_x - w / 2)
                     y = int(center_y - h / 2)
+                    boxes.append([x, y, w, h])
+                    confidences.append(float(confidence))
 
-                    # Validate bounding box
-                    x, y, w, h = self._validate_bbox(x, y, w, h, width, height)
-                    if w <= 0 or h <= 0:
-                        continue
+        # Apply Non-Maximum Suppression
+        indices = cv2.dnn.NMSBoxes(boxes, confidences, self.confidence_threshold, 0.4)
 
-                    # Calculate distance and angle
-                    distance = y
-                    angle = ((center_x - (width / 2)) / (width / 2)) * (self.robot_params.camera_fov / 2)
+        for i in indices:
+            i = i[0] if isinstance(i, (list, np.ndarray)) else i
+            x, y, w, h = boxes[i]
+            x, y, w, h = self._validate_bbox(x, y, w, h, width, height)
+            if w <= 0 or h <= 0:
+                continue
 
-                    # Store detection info
-                    detections.append({
-                        'box': (x, y, w, h),
-                        'distance': distance,
-                        'angle': angle
-                    })
+            x_adjusted = x - (width / 2)
+            y_adjusted = height - (y + h)
+
+            distance = self._calculate_distance(x_adjusted, y_adjusted)
+            angle = self._calculate_angle(x + w / 2, width)
+
+            detections.append({
+                'box': (x, y, w, h),
+                'distance': distance,
+                'angle': angle
+            })
 
         return detections
+
 
     def get_first_person(self, image):
         """
@@ -97,7 +101,13 @@ class PersonDetector:
             image: Input image (numpy array)
                 
         Returns:
-            tuple: (cropped_image, detection_info) or (None, None) if no person is detected
+            tuple: (cropped_image, detection_info) or (None, None) if no person is detected.
+                - cropped_image: Cropped image of the detected person
+                - detection_info:
+                    Dictionary containing detection info:
+                    - 'box': (x, y, w, h) bounding box coordinates
+                    - 'distance': Estimated distance to person in meters
+                    - 'angle': Estimated angle to person in degrees
         """
         if image is None:
             return None, None
@@ -141,3 +151,31 @@ class PersonDetector:
         w = min(w, img_width - x)
         h = min(h, img_height - y)
         return x, y, w, h
+    
+    def _calculate_distance(self, x, y):
+        """
+        Calculate distance to the person based on the y-coordinate.
+        
+        Args:
+            x: X-coordinate of the bounding box center
+            y: Y-coordinate of the bounding box center
+            
+        Returns:
+            float: Estimated distance in meters
+        """
+        # Calculate distance using the Pythagorean theorem and scaling the result
+        return math.sqrt(x**2 + y**2) / 100
+
+
+    def _calculate_angle(self, center_x, img_width):
+        """
+        Calculate angle to the person based on the x-coordinate.
+        
+        Args:
+            center_x: X-coordinate of the bounding box center
+            img_width: Width of the image
+            
+        Returns:
+            float: Estimated angle in degrees
+        """
+        return ((center_x - (img_width / 2)) / (img_width / 2)) * (self.robot_params.camera_fov / 2)

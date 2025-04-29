@@ -10,12 +10,11 @@ class Settings:
         self.persons_dir = os.path.join(self.base_dir, "../persons")
         
         # YOLO model paths
-        self.yolo_weights = os.path.join(self.models_dir, "yolov4.weights")
-        self.yolo_cfg = os.path.join(self.models_dir, "yolov4.cfg")
+        self.yolo_weights = os.path.join(self.models_dir, "yolov4-tiny.weights")
+        self.yolo_cfg = os.path.join(self.models_dir, "yolov4-tiny.cfg")
         self.yolo_names = os.path.join(self.models_dir, "coco.names")
         
         # Camera settings
-        self.camera_window_name = "Person Recognition"
         self.camera_timeout = 3.0
         
         # Person recognition settings
@@ -26,3 +25,6 @@ class Settings:
         
         # Detection settings
         self.detection_confidence = 0.75
+
+        # Tracking settings
+        self.similarity_threshold = 0.8

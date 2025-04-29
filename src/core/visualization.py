@@ -7,7 +7,7 @@ class Visualizer:
         """Initialize visualizer."""
         pass
     
-    def draw_tracking_info(self, image, distance=0, angle=0):
+    def draw_tracking_info(self, image, distance=0, angle=0, confidence=0):
         """
         Add distance and angle information to image.
         
@@ -25,6 +25,8 @@ class Visualizer:
         # Convert distance and angle to strings
         distance_text = f"Distance: {distance:.2f} m"
         angle_text = f"Angle: {angle:.2f} deg"
+        confidence_text = f"Score: {confidence:.2f}"
+
         
         # Get image dimensions
         height, width, _ = image.shape
@@ -46,5 +48,9 @@ class Visualizer:
         # Put angle text
         cv2.putText(image, angle_text, (text_x, text_y), 
                 font, font_scale, font_color, thickness)
+        
+        # Put confidence text
+        cv2.putText(image, confidence_text, (text_x, text_y - 60), 
+                    font, font_scale, font_color, thickness)
                 
         return image

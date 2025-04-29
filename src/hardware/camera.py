@@ -12,10 +12,6 @@ class Camera:
         Args:
             settings: Application settings
         """
-        self.window_name = settings.camera_window_name
-        cv2.namedWindow(self.window_name, cv2.WINDOW_NORMAL)
-        cv2.resizeWindow(self.window_name, 1600, 1600)
-
         # Initialize VideoClient
         self.client = VideoClient()
         self.client.SetTimeout(settings.camera_timeout)
