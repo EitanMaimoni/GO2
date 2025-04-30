@@ -147,7 +147,7 @@ class GUIInterface:
                 if frame is None:
                     continue
 
-                person_img, target_info = self.system.tracker.track_target(frame, gallery_features)
+                person_img, target_info = self.system.recognizer.recognize_target(frame, gallery_features)
 
                 if person_img is not None:
                     if target_info is not None:

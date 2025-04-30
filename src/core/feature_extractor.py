@@ -7,14 +7,19 @@ from torchreid.models.osnet import osnet_x1_0
 class FeatureExtractor:
     """Extracts 512-dim features from person images using OSNet."""
 
-    def __init__(self, settings):
+    def __init__(self):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if self.device.type == 'cuda':
+            print(f"[INFO] GPU: {torch.cuda.get_device_name(0)} in use")
+        else:
+            print("[INFO] Using CPU")
 
         # Auto-download pretrained weights
         self.model = osnet_x1_0(pretrained=True)
         self.model.to(self.device)
         self.model.eval()
 
+        # TODO: Check the resize of the input image, maybe it should be 512x1024 (we resize to that size)
         self.transform = transforms.Compose([
             transforms.ToPILImage(),
             transforms.Resize((256, 128)),

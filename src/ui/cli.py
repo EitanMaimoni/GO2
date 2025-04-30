@@ -9,6 +9,7 @@ class CLIInterface:
         self.latest_image = None
         self.latest_person = None
 
+    # TODO: ADD option to delete model
     def start(self):
         while True:
             print("\n===== Person Tracker CLI =====")
@@ -29,6 +30,7 @@ class CLIInterface:
             else:
                 print("Invalid choice.")
 
+    #TODO: Extract the logic of creating model into model_manager class (or even new class that model manager will use)
     def create_model(self, name):
         self.system.model_manager.create_dataset(name)
         self.capture_mode = True
@@ -63,6 +65,7 @@ class CLIInterface:
                     print(f"Training failed: {e}")
                 cv2.destroyWindow("Tracking")
 
+    # TODO: extract the logic of tracking into a separate class
     def follow_person(self):
         models = self.system.model_manager.list_models()
         if not models:
@@ -89,7 +92,7 @@ class CLIInterface:
             if frame is None:
                 continue
 
-            person_img, target_info = self.system.tracker.track_target(frame, gallery_features)
+            person_img, target_info = self.system.recognizer.recognize_target(frame, gallery_features)
 
             if person_img is not None:
                 if target_info is not None:

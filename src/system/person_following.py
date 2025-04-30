@@ -8,9 +8,9 @@ class PersonFollowingSystem:
         self.detector = None
         self.feature_extractor = None
         self.model_manager = None
-        self.tracker = None
+        self.recognizer = None
         self.visualizer = None
-        self.gui = None
+        self.ui = None
 
     def initialize(self):
         self.settings = self.init_settings()
@@ -19,7 +19,7 @@ class PersonFollowingSystem:
         self.detector = self.init_detector()
         self.feature_extractor = self.init_feature_extractor()
         self.model_manager = self.init_model_manager()
-        self.tracker = self.init_tracker()
+        self.recognizer = self.init_recognizer()
         self.visualizer = self.init_visualizer()
 
     def init_settings(self):
@@ -43,25 +43,25 @@ class PersonFollowingSystem:
 
     def init_feature_extractor(self):
         from core.feature_extractor import FeatureExtractor
-        return FeatureExtractor(self.settings)
-
+        return FeatureExtractor()
+    
+    def init_recognizer(self):
+        from core.recognition import PersonRecognition
+        return PersonRecognition(self.detector, self.feature_extractor, self.settings)
+    
     def init_model_manager(self):
         from models.model_manager import ModelManager
         manager = ModelManager(self.settings)
         manager.set_feature_extractor(self.feature_extractor)
         return manager
-    
-    def init_tracker(self):
-        from core.tracking import PersonTracker
-        return PersonTracker(self.detector, self.feature_extractor, self.settings.similarity_threshold)
 
     def init_visualizer(self):
         from core.visualization import Visualizer
         return Visualizer()
 
-    def attach_gui(self):
-        from ui.cli import CLIInterface
-        self.ui = CLIInterface(self)
+    def attach_ui(self):
+        from ui.gui import GUIInterface
+        self.ui = GUIInterface(self)
         return self.ui
 
     def cleanup(self):

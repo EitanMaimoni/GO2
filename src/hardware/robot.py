@@ -44,18 +44,18 @@ class RobotController:
             angle: Angle to target (degrees)
             distance: Distance to target (meters)
         """
-        if abs(angle) > self.params.angle_margin and distance > self.params.distance_threshold:
-            print("Rotating to face the person and walking towards them...")
-            self._rotate_and_walk_forward(angle, distance)
-        elif abs(angle) > self.params.angle_margin:
-            print("Rotating to face the person...")
-            self._rotate(angle)
-        elif distance > self.params.distance_threshold:
-            print("Walking towards the person...")
-            self._walk_forward(distance)
-        else:
-            print("Reached the person. Stopping all movement.")
-            self.obstacles_avoid_client.Move(0, 0, 0)
+        # if abs(angle) > self.params.angle_threshold and distance > self.params.distance_threshold:
+        #     print("Rotating to face the person and walking towards them...")
+        #     self._rotate_and_walk_forward(angle, distance)
+        # elif abs(angle) > self.params.angle_threshold:
+        #     print("Rotating to face the person...")
+        #     self._rotate(angle)
+        # elif distance > self.params.distance_threshold:
+        #     print("Walking towards the person...")
+        #     self._walk_forward(distance)
+        # else:
+        #     print("Reached the person. Stopping all movement.")
+        #     self.obstacles_avoid_client.Move(0, 0, 0)
 
     def _rotate(self, angle):
         """
@@ -92,7 +92,7 @@ class RobotController:
             angle: Angle to target (degrees)
             distance: Distance to target (meters)
         """
-        speed = min(distance * self.params.combined_speed_factor, 0.5)  # Lower max speed when combined
+        speed = min(distance * self.params.forward_speed_factor, 0.5)  # Lower max speed when combined
 
         if angle > 0:
             print("Rotating left and moving forward...")

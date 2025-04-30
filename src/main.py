@@ -1,3 +1,4 @@
+# TODO: Remove statics method after testing
 import cProfile
 import pstats
 import io
@@ -8,7 +9,7 @@ def main():
     ChannelFactoryInitialize(0)
     system = PersonFollowingSystem()
     system.initialize()
-    ui = system.attach_gui()
+    ui = system.attach_ui()
     ui.start()
 
 if __name__ == "__main__":
