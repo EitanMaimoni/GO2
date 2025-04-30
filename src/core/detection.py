@@ -78,11 +78,10 @@ class PersonDetector:
             if w <= 0 or h <= 0:
                 continue
 
-            x_adjusted = x - (width / 2)
             y_adjusted = height - (y + h)
 
-            distance = self._calculate_distance(x_adjusted, y_adjusted)
-            angle = self._calculate_angle(x + w / 2, width)
+            distance = self._estimate_distance_from_bottom(y_adjusted)
+            angle = self._estimate_angle(x + w / 2, width)
 
             detections.append({
                 'box': (x, y, w, h),
@@ -152,30 +151,9 @@ class PersonDetector:
         h = min(h, img_height - y)
         return x, y, w, h
     
-    def _calculate_distance(self, x, y):
-        """
-        Calculate distance to the person based on the y-coordinate.
-        
-        Args:
-            x: X-coordinate of the bounding box center
-            y: Y-coordinate of the bounding box center
-            
-        Returns:
-            float: Estimated distance in meters
-        """
-        # Calculate distance using the Pythagorean theorem and scaling the result
-        return math.sqrt(x**2 + y**2) / 100
+    def _estimate_distance_from_bottom(self, y_from_bottom):
+        return y_from_bottom / 100
 
-
-    def _calculate_angle(self, center_x, img_width):
-        """
-        Calculate angle to the person based on the x-coordinate.
-        
-        Args:
-            center_x: X-coordinate of the bounding box center
-            img_width: Width of the image
-            
-        Returns:
-            float: Estimated angle in degrees
-        """
-        return ((center_x - (img_width / 2)) / (img_width / 2)) * (self.robot_params.camera_fov / 2)
+    def _estimate_angle(self, center_x, img_width):
+        # 70 is the pove of camera, need to do it threw settings
+        return ((center_x - (img_width / 2)) / (img_width / 2)) * (70.0 / 2)

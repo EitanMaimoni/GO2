@@ -18,13 +18,11 @@ class Settings:
         self.camera_timeout = 3.0
         
         # Person recognition settings
-        self.person_image_min_count = 10
-        self.feature_image_width = 128
-        self.feature_image_height = 256
-        self.target_capture_size = (128*4, 256*4)
+        self.person_image_min_count = 100
+        self.target_capture_size = (512, 1024)
         
         # Detection settings
         self.detection_confidence = 0.75
 
         # Tracking settings
-        self.similarity_threshold = 0.8
+        self.regocnition_confidence = 0.82

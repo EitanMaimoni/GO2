@@ -80,7 +80,12 @@ class ModelManager:
             if os.path.exists(gallery_path):
                 models.append(name)
         return models
-
+    
+    # TODO: Add a delete method to delete a person's model
+    def delete_model(self, person_name):
+        pass
+    
+    # TODO: Maybe its better to blur the background (or something similar)
     def train_model_osnet(self, person_name):
         """
         Extract OSNet features from images of the person and save to gallery.
