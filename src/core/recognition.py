@@ -9,7 +9,7 @@ import mediapipe as mp
 class PersonRecognition:
     """Person recognition class: detect -> extract feature -> match to gallery."""
 
-    def __init__(self, detector, feature_extractor, settings):
+    def __init__(self, feature_extractor, settings):
         """
         Initialize person tracker.
         
@@ -18,10 +18,34 @@ class PersonRecognition:
             feature_extractor: FeatureExtractor instance
             regocnition_confidence: Threshold for cosine similarity
         """
-        self.detector = detector
         self.feature_extractor = feature_extractor
         self.regocnition_confidence = settings.regocnition_confidence
         self.mp_selfie_segmentation = mp.solutions.selfie_segmentation.SelfieSegmentation(model_selection=1)
+    
+    def _normalize_brightness(self, image, target_mean=128, target_std=50):
+            """
+            Normalize brightness across images by shifting to a target mean and std.
+            """
+
+            if image is None:
+                return None
+            
+            img = image.astype(np.float32)
+
+            current_mean = np.mean(img)
+            current_std = np.std(img)
+
+            if current_std < 1e-6:
+                return image  # avoid division by near-zero
+
+            # Normalize to zero-mean, unit-std
+            img = (img - current_mean) / current_std
+
+            # Scale to target
+            img = img * target_std + target_mean
+            img = np.clip(img, 0, 255).astype(np.uint8)
+
+            return img
 
     def _remove_background(self, image):
         """Remove background using MediaPipe SelfieSegmentation."""
@@ -35,8 +59,7 @@ class PersonRecognition:
         bg_removed = np.where(mask[..., None], image, (0, 0, 0)).astype(np.uint8)
         return bg_removed
 
-
-    def recognize_target(self, frame, gallery_features):
+    def recognize_target(self, frame, detections, gallery_features):
         """
         Recognize target in the frame.  
 
@@ -55,8 +78,6 @@ class PersonRecognition:
 
         # TODO: Compare all confidence scores (between each person detected) and select the best one (for getting the best match)
         # another option is to take the first one detected and not checking the other (for getting the fastest response)
-        detections = self.detector.detect_persons(frame)
-        print(f"[Detection] Found {len(detections)} persons")
         for detection in detections:
             x, y, w, h = detection['box']
             person_img = frame[y:y+h, x:x+w]
@@ -65,7 +86,7 @@ class PersonRecognition:
 
             # Extract feature and compare
             # TODO: Maybe its better to resize to target size (force exact dimensions, the model trained on this)
-            feature = self.feature_extractor.extract(self._remove_background(person_img))
+            feature = self.feature_extractor.extract(self._normalize_brightness(self._remove_background(person_img)))
             if feature is None:
                 continue
             
