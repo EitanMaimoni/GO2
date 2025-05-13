@@ -25,4 +25,4 @@ class Settings:
         self.detection_confidence = 0.75
 
         # Tracking settings
-        self.regocnition_confidence = 0.82
+        self.regocnition_confidence = 0.75
