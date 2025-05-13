@@ -60,8 +60,8 @@ class PersonFollowingSystem:
         return Visualizer()
 
     def attach_ui(self):
-        from ui.gui import GUIInterface
-        self.ui = GUIInterface(self)
+        from ui.cli import CLIInterface
+        self.ui = CLIInterface(self)
         return self.ui
 
     def cleanup(self):

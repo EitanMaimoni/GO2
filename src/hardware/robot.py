@@ -26,8 +26,9 @@ class RobotController:
         self.params = robot_params
 
         # Register signal handler for Ctrl+C
+        #TODO : Need to add signal handler for robot disconnect
         signal.signal(signal.SIGINT, self.signal_handler)
-
+    
     def signal_handler(self, sig, frame):
         """
         Handle Ctrl+C signal.
@@ -81,7 +82,7 @@ class RobotController:
         """
         print("Walking forward...")
         # Move forward based on the distance.
-        speed = min(distance * self.params.forward_speed_factor, 0.5)  # Cap max speed
+        speed = min(distance * self.params.forward_speed_factor, 1.5)  # Cap max speed
         self.obstacles_avoid_client.Move(speed, 0, 0)
     
     def _rotate_and_walk_forward(self, angle, distance):
@@ -92,7 +93,7 @@ class RobotController:
             angle: Angle to target (degrees)
             distance: Distance to target (meters)
         """
-        speed = min(distance * self.params.forward_speed_factor, 0.5)  # Lower max speed when combined
+        speed = min(distance * self.params.forward_speed_factor, 1.5)  # Lower max speed when combined
 
         if angle > 0:
             print("Rotating left and moving forward...")
