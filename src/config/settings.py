@@ -19,7 +19,6 @@ class Settings:
         
         # Person recognition settings
         self.person_image_min_count = 100
-        self.target_capture_size = (512, 1024)
         
         # Detection settings
         self.detection_confidence = 0.75
