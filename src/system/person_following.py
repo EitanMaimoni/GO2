@@ -47,7 +47,7 @@ class PersonFollowingSystem:
     
     def init_recognizer(self):
         from core.recognition import PersonRecognition
-        return PersonRecognition(self.detector, self.feature_extractor, self.settings)
+        return PersonRecognition(self.feature_extractor, self.settings)
     
     def init_model_manager(self):
         from models.model_manager import ModelManager
@@ -65,7 +65,5 @@ class PersonFollowingSystem:
         return self.ui
 
     def cleanup(self):
-        if self.camera:
-            self.camera.release()
         if self.robot:
             self.robot.stop()
