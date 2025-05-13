@@ -30,6 +30,32 @@ class CLIInterface:
             else:
                 print("Invalid choice.")
     
+    def _normalize_brightness(self, image, target_mean=128, target_std=50):
+        """
+        Normalize brightness across images by shifting to a target mean and std.
+        """
+
+        if image is None:
+            return None
+        
+        img = image.astype(np.float32)
+
+        current_mean = np.mean(img)
+        current_std = np.std(img)
+
+        if current_std < 1e-6:
+            return image  # avoid division by near-zero
+
+        # Normalize to zero-mean, unit-std
+        img = (img - current_mean) / current_std
+
+        # Scale to target
+        img = img * target_std + target_mean
+        img = np.clip(img, 0, 255).astype(np.uint8)
+
+        return img
+
+
     def _remove_background(self, image):
         """Remove background using MediaPipe SelfieSegmentation."""
         rgb_img = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -56,6 +82,7 @@ class CLIInterface:
 
             person_img, _ = self.system.detector.get_first_person(frame)
             person_img = self._remove_background(person_img) if person_img is not None else None
+            person_img = self._normalize_brightness(person_img)
 
             display_img = person_img if person_img is not None else frame
             cv2.imshow("Tracking", display_img)
@@ -63,7 +90,7 @@ class CLIInterface:
             key = cv2.waitKey(1) & 0xFF
             if key == 13:  # ENTER
                 if person_img is not None:
-                    self.system.model_manager.save_image(name, self.latest_person)
+                    self.system.model_manager.save_image(name, person_img)
                     self.capture_count += 1
                     print(f"Saved image {self.capture_count}")
             elif key == 27:  # ESC
@@ -103,7 +130,9 @@ class CLIInterface:
             if frame is None:
                 continue
 
-            person_img, target_info = self.system.recognizer.recognize_target(frame, gallery_features)
+            detections = self.system.detector.detect_persons(frame)
+            print(f"[Detection] Found {len(detections)} persons")
+            person_img, target_info = self.system.recognizer.recognize_target(frame, detections, gallery_features)
 
             if person_img is not None:
                 if target_info is not None:
