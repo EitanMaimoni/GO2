@@ -3,6 +3,8 @@ import numpy as np
 import math
 import time
 from sklearn.metrics.pairwise import cosine_similarity
+import mediapipe as mp
+
 
 class PersonRecognition:
     """Person recognition class: detect -> extract feature -> match to gallery."""
@@ -19,6 +21,20 @@ class PersonRecognition:
         self.detector = detector
         self.feature_extractor = feature_extractor
         self.regocnition_confidence = settings.regocnition_confidence
+        self.mp_selfie_segmentation = mp.solutions.selfie_segmentation.SelfieSegmentation(model_selection=1)
+
+    def _remove_background(self, image):
+        """Remove background using MediaPipe SelfieSegmentation."""
+        rgb_img = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        results = self.mp_selfie_segmentation.process(rgb_img)
+
+        if not results.segmentation_mask.any():
+            return image  # fallback
+
+        mask = results.segmentation_mask > 0.1
+        bg_removed = np.where(mask[..., None], image, (0, 0, 0)).astype(np.uint8)
+        return bg_removed
+
 
     def recognize_target(self, frame, gallery_features):
         """
@@ -49,7 +65,7 @@ class PersonRecognition:
 
             # Extract feature and compare
             # TODO: Maybe its better to resize to target size (force exact dimensions, the model trained on this)
-            feature = self.feature_extractor.extract(person_img)
+            feature = self.feature_extractor.extract(self._remove_background(person_img))
             if feature is None:
                 continue
             
