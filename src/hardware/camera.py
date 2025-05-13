@@ -39,21 +39,3 @@ class Camera:
         except Exception as e:
             print(f"Error getting image: {str(e)}")
             return None
-    
-    def display_image(self, image):
-        """
-        Display image in window.
-        
-        Args:
-            image: Image to display
-        """
-        if image is None or image.size == 0:
-            print("Warning: Cannot display empty/None image")
-            return
-            
-        cv2.imshow(self.window_name, image)
-        cv2.waitKey(1)
-    
-    def release(self):
-        """Release camera resources."""
-        cv2.destroyAllWindows()

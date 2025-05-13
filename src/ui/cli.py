@@ -1,13 +1,13 @@
 import cv2
 import numpy as np
 import time
+import mediapipe as mp
 
 class CLIInterface:
     def __init__(self, system):
         self.system = system
-        self.capture_mode = False
-        self.latest_image = None
-        self.latest_person = None
+        self.mp_selfie_segmentation = mp.solutions.selfie_segmentation.SelfieSegmentation(model_selection=1)
+
 
     # TODO: ADD option to delete model
     def start(self):
@@ -29,6 +29,18 @@ class CLIInterface:
                 break
             else:
                 print("Invalid choice.")
+    
+    def _remove_background(self, image):
+        """Remove background using MediaPipe SelfieSegmentation."""
+        rgb_img = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        results = self.mp_selfie_segmentation.process(rgb_img)
+
+        if not results.segmentation_mask.any():
+            return image  # fallback
+
+        mask = results.segmentation_mask > 0.1
+        bg_removed = np.where(mask[..., None], image, (0, 0, 0)).astype(np.uint8)
+        return bg_removed
 
     #TODO: Extract the logic of creating model into model_manager class (or even new class that model manager will use)
     def create_model(self, name):
@@ -37,26 +49,24 @@ class CLIInterface:
         self.capture_count = 0
 
         cv2.namedWindow("Tracking", cv2.WINDOW_NORMAL)
-        while self.capture_mode:
+        while True:
             frame = self.system.camera.get_frame()
             if frame is None:
                 continue
 
             person_img, _ = self.system.detector.get_first_person(frame)
-            self.latest_image = frame
-            self.latest_person = person_img
+            person_img = self._remove_background(person_img) if person_img is not None else None
 
             display_img = person_img if person_img is not None else frame
             cv2.imshow("Tracking", display_img)
 
             key = cv2.waitKey(1) & 0xFF
             if key == 13:  # ENTER
-                if self.latest_person is not None:
+                if person_img is not None:
                     self.system.model_manager.save_image(name, self.latest_person)
                     self.capture_count += 1
                     print(f"Saved image {self.capture_count}")
             elif key == 27:  # ESC
-                self.capture_mode = False
                 print("Training model...")
                 try:
                     self.system.model_manager.train_model_osnet(name)
@@ -64,6 +74,7 @@ class CLIInterface:
                 except Exception as e:
                     print(f"Training failed: {e}")
                 cv2.destroyWindow("Tracking")
+                break
 
     # TODO: extract the logic of tracking into a separate class
     def follow_person(self):
@@ -79,15 +90,15 @@ class CLIInterface:
         idx = int(input("Select person to follow: ")) - 1
         name = models[idx]
 
+        # TODO: get full path to the model_manager
         gallery_features = np.load(f"{self.system.model_manager.base_dir}/{name}/gallery/features.npy")
 
-        self.capture_mode = True
         print("Tracking started. Press ESC to stop.")
         cv2.namedWindow("Tracking", cv2.WINDOW_NORMAL)
 
         last_seen_time = time.time()
 
-        while self.capture_mode:
+        while True:
             frame = self.system.camera.get_frame()
             if frame is None:
                 continue
@@ -109,17 +120,16 @@ class CLIInterface:
                     display_img = person_img
             else:
                 display_img = frame
-                self.system.robot.follow_target(0, 0)
 
             time_since_seen = time.time() - last_seen_time
-            if time_since_seen >= 3.0:
+            if time_since_seen >= 1.0:
                 self.system.robot.follow_target(0, 0)
 
             cv2.imshow("Tracking", display_img)
 
             key = cv2.waitKey(1) & 0xFF
             if key == 27:
-                self.capture_mode = False
                 self.system.robot.follow_target(0, 0)
                 print("Stopped tracking.")
                 cv2.destroyWindow("Tracking")
+                break
