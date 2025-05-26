@@ -1,5 +1,4 @@
 import torch
-import numpy as np
 import cv2
 from torchvision import transforms
 from torchreid.models.osnet import osnet_x1_0

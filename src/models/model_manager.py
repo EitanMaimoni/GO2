@@ -1,10 +1,7 @@
 import os
 import cv2
 import numpy as np
-import joblib
 from datetime import datetime
-from sklearn.decomposition import PCA
-import torch
 from tqdm import tqdm
 
 class ModelManager:
