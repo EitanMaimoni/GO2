@@ -2,11 +2,18 @@ import torch
 import cv2
 from torchvision import transforms
 from torchreid.models.osnet import osnet_x1_0
+import os
 
 class FeatureExtractor:
     """Extracts 512-dim features from person images using OSNet."""
 
-    def __init__(self):
+    def __init__(self, model_path="/home/eitan/Desktop/GO2/src/osnet_x1_0_fine_tuned.pth"):
+        """
+        Initialize FeatureExtractor with optional fine-tuned model.
+        
+        Args:
+            model_path: Path to fine-tuned model (.pth file). If None, uses pretrained model.
+        """
         # Chooses whether to use GPU (cuda) or CPU based on availability.
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         if self.device.type == 'cuda':
@@ -14,8 +21,39 @@ class FeatureExtractor:
         else:
             print("[INFO] Using CPU")
 
-        # Auto-download pretrained weights
-        self.model = osnet_x1_0(pretrained=True)
+        # Load model based on whether custom model path is provided
+        if model_path and os.path.exists(model_path):
+            print(f"[INFO] Loading fine-tuned model from: {model_path}")
+            # Load pretrained model first
+            self.model = osnet_x1_0(pretrained=True)
+            
+            # Load fine-tuned weights
+            checkpoint = torch.load(model_path, map_location=self.device)
+            
+            # Get current model state dict
+            model_state_dict = self.model.state_dict()
+            
+            # Filter and load only compatible layers (skip classifier if different num_classes)
+            filtered_checkpoint = {}
+            for key, value in checkpoint.items():
+                if key in model_state_dict:
+                    if model_state_dict[key].shape == value.shape:
+                        filtered_checkpoint[key] = value
+                    else:
+                        print(f"[WARNING] Skipping layer {key} due to shape mismatch")
+                        print(f"  Model: {model_state_dict[key].shape}, Checkpoint: {value.shape}")
+            
+            # Load the filtered weights
+            self.model.load_state_dict(filtered_checkpoint, strict=False)
+            print(f"[INFO] Loaded {len(filtered_checkpoint)} layers from fine-tuned model")
+            
+        else:
+            if model_path:
+                print(f"[WARNING] Model path {model_path} not found. Using pretrained model instead.")
+            print("[INFO] Using pretrained OSNet model")
+            # Auto-download pretrained weights
+            self.model = osnet_x1_0(pretrained=True)
+        
         self.model.to(self.device)
         # Sets the model to evaluation mode (disables dropout, freezes batchnorm)
         self.model.eval()

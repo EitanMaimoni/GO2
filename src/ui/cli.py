@@ -11,8 +11,6 @@ from models.model_tester import ModelTester
 class CLIInterface:
     def __init__(self, system):
         self.system = system
-        self.mp_selfie_segmentation = mp.solutions.selfie_segmentation.SelfieSegmentation(model_selection=1)
-
 
     # TODO: ADD option to delete model
     def start(self):
@@ -21,9 +19,8 @@ class CLIInterface:
             print("1. Create Person Model")
             print("2. Follow Person")
             print("3. Collect training dataset images (TorchReID format)")
-            print("4. Test & Fine-tune Model")  # <-- ADD THIS LINE
-            print("5. Exit")  # <-- UPDATE number
-
+            print("4. Test & Fine-tune Model")
+            print("5. Exit")
 
             choice = input("Select an option: ").strip()
 
@@ -34,41 +31,15 @@ class CLIInterface:
                 self.follow_person()
             elif choice == "3":
                 self.collect_finetune_dataset()
-            elif choice == "4":  # <-- ADD THIS
+            elif choice == "4":
                 self.test_and_finetune_menu()
-            elif choice == "5":  # <-- UPDATE from "4"
+            elif choice == "5":
                 self.system.cleanup()
                 print("Goodbye.")
                 break
             else:
                 print("Invalid choice.")
-    
-    def _normalize_brightness(self, image, target_mean=128, target_std=50):
-        """
-        Normalize brightness across images by shifting to a target mean and std.
-        """
 
-        if image is None:
-            return None
-        
-        img = image.astype(np.float32)
-
-        current_mean = np.mean(img)
-        current_std = np.std(img)
-
-        if current_std < 1e-6:
-            return image  # avoid division by near-zero
-
-        # Normalize to zero-mean, unit-std
-        img = (img - current_mean) / current_std
-
-        # Scale to target
-        img = img * target_std + target_mean
-        img = np.clip(img, 0, 255).astype(np.uint8)
-
-        return img
-
-    #TODO: Extract the logic of creating model into model_manager class (or even new class that model manager will use)
     def create_model(self, name):
         self.system.model_manager.create_dataset(name)
         self.capture_mode = True
@@ -81,7 +52,6 @@ class CLIInterface:
                 continue
 
             person_img, _ = self.system.detector.get_first_person(frame)
-            person_img = self._normalize_brightness(person_img)
 
             display_img = person_img if person_img is not None else frame
             cv2.imshow("Tracking", display_img)
@@ -102,7 +72,6 @@ class CLIInterface:
                 cv2.destroyWindow("Tracking")
                 break
 
-    # TODO: extract the logic of tracking into a separate class
     def follow_person(self):
         models = self.system.model_manager.list_models()
         if not models:
@@ -116,7 +85,6 @@ class CLIInterface:
         idx = int(input("Select person to follow: ")) - 1
         name = models[idx]
 
-        # TODO: get full path to the model_manager
         gallery_features = np.load(f"{self.system.model_manager.base_dir}/{name}/gallery/features.npy")
 
         print("Tracking started. Press ESC to stop.")
@@ -162,14 +130,12 @@ class CLIInterface:
                 cv2.destroyWindow("Tracking")
                 break
     
-    #TODO: Extract the logic of creating model into model_manager class (or even new class that model manager will use)
     def collect_finetune_dataset(self):
         print("\n=== Collect Fine-Tuning Dataset ===")
         print("1. Add person for training")
         print("2. Add person for testing")
         mode = input("Choose mode (1/2): ").strip()
 
-        # Detect next available person_XYZ ID
         def get_next_person_id(base_dir):
             os.makedirs(base_dir, exist_ok=True)
             existing = [d for d in os.listdir(base_dir) if d.startswith("person_")]
@@ -279,9 +245,8 @@ class CLIInterface:
             print("\n=== Model Testing & Fine-tuning ===")
             print("1. Test current model accuracy")
             print("2. Fine-tune model on custom dataset") 
-            print("3. Compare before/after fine-tuning")
-            print("4. View dataset statistics")
-            print("5. Back to main menu")
+            print("3. View dataset statistics")
+            print("4. Back to main menu")
             
             choice = input("Select an option: ").strip()
             
@@ -290,20 +255,20 @@ class CLIInterface:
             elif choice == "2":
                 self.finetune_model()
             elif choice == "3":
-                self.compare_models()
-            elif choice == "4":
                 self.show_dataset_stats()
-            elif choice == "5":
+            elif choice == "4":
                 break
             else:
                 print("Invalid choice.")
 
     def test_current_model(self):
-        """Test the current model's accuracy."""
+        """Test the current model's accuracy for each person individually."""
         print("\n=== Testing Current Model ===")
         
-        # Check if test dataset exists
-        if not os.path.exists("../dataset/query") or not os.path.exists("../dataset/gallery"):
+        query_dir = "../dataset/query"
+        gallery_dir = "../dataset/gallery"
+        
+        if not os.path.exists(query_dir) or not os.path.exists(gallery_dir):
             print("Error: No test dataset found!")
             print("Please collect test dataset first using option 3 -> mode 2")
             return
@@ -311,22 +276,183 @@ class CLIInterface:
         try:
             tester = ModelTester(self.system.recognizer.feature_extractor)
             
-            # Get confidence threshold from user
-            threshold = input("Enter confidence threshold (default 0.5): ").strip()
-            threshold = float(threshold) if threshold else 0.5
+            # Get all persons in query directory
+            query_persons = [d for d in os.listdir(query_dir) 
+                           if os.path.isdir(os.path.join(query_dir, d)) and d.startswith('person_')]
             
-            print("Testing model... This may take a few minutes.")
-            results = tester.test_model_accuracy(confidence_threshold=threshold)
+            # Get all persons in gallery directory
+            gallery_persons = [d for d in os.listdir(gallery_dir) 
+                             if os.path.isdir(os.path.join(gallery_dir, d)) and d.startswith('person_')]
             
-            # Save results with timestamp
+            if not query_persons:
+                print("No persons found in query directory!")
+                return
+            
+            if not gallery_persons:
+                print("No persons found in gallery directory!")
+                return
+            
+            print(f"Found {len(query_persons)} persons in query and {len(gallery_persons)} persons in gallery")
+            
+            # Results storage
+            detailed_results = {
+                "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "per_person_results": {},
+                "overall_stats": {}
+            }
+            
+            all_similarities_same = []  # Similarities when comparing same person
+            all_similarities_diff = []  # Similarities when comparing different persons
+            
+            print("\n" + "="*80)
+            print("DETAILED PERSON-BY-PERSON TESTING")
+            print("="*80)
+            
+            for query_person in sorted(query_persons):
+                print(f"\n--- Testing {query_person} ---")
+                
+                query_person_dir = os.path.join(query_dir, query_person)
+                query_images = glob.glob(os.path.join(query_person_dir, "*.jpg")) + \
+                              glob.glob(os.path.join(query_person_dir, "*.png"))
+                
+                if not query_images:
+                    print(f"  No images found for {query_person}")
+                    continue
+                
+                person_results = {
+                    "similarities_to_self": [],
+                    "similarities_to_others": {},
+                    "best_matches": [],
+                    "correct_identifications": 0,
+                    "total_queries": len(query_images)
+                }
+                
+                # Test each query image of this person
+                for query_img_path in query_images:
+                    query_img = cv2.imread(query_img_path)
+                    if query_img is None:
+                        continue
+                    
+                    query_feature = self.system.recognizer.feature_extractor.extract(query_img)
+                    if query_feature is None:
+                        continue
+                    
+                    best_similarity = -1
+                    best_match_person = None
+                    person_similarities = {}
+                    
+                    # Compare against all gallery persons
+                    for gallery_person in gallery_persons:
+                        gallery_person_dir = os.path.join(gallery_dir, gallery_person)
+                        gallery_images = glob.glob(os.path.join(gallery_person_dir, "*.jpg")) + \
+                                       glob.glob(os.path.join(gallery_person_dir, "*.png"))
+                        
+                        person_max_sim = -1
+                        
+                        for gallery_img_path in gallery_images:
+                            gallery_img = cv2.imread(gallery_img_path)
+                            if gallery_img is None:
+                                continue
+                            
+                            gallery_feature = self.system.recognizer.feature_extractor.extract(gallery_img)
+                            if gallery_feature is None:
+                                continue
+                            
+                            # Calculate similarity
+                            from sklearn.metrics.pairwise import cosine_similarity
+                            similarity = cosine_similarity(query_feature, gallery_feature)[0][0]
+                            person_max_sim = max(person_max_sim, similarity)
+                        
+                        if person_max_sim > -1:
+                            person_similarities[gallery_person] = person_max_sim
+                            
+                            if person_max_sim > best_similarity:
+                                best_similarity = person_max_sim
+                                best_match_person = gallery_person
+                    
+                    # Store results for this query image
+                    if best_match_person:
+                        person_results["best_matches"].append({
+                            "query_image": os.path.basename(query_img_path),
+                            "best_match": best_match_person,
+                            "similarity": best_similarity,
+                            "is_correct": best_match_person == query_person
+                        })
+                        
+                        if best_match_person == query_person:
+                            person_results["correct_identifications"] += 1
+                            all_similarities_same.append(best_similarity)
+                        else:
+                            all_similarities_diff.append(best_similarity)
+                    
+                    # Store similarities to self and others
+                    if query_person in person_similarities:
+                        person_results["similarities_to_self"].append(person_similarities[query_person])
+                    
+                    for other_person, sim in person_similarities.items():
+                        if other_person != query_person:
+                            if other_person not in person_results["similarities_to_others"]:
+                                person_results["similarities_to_others"][other_person] = []
+                            person_results["similarities_to_others"][other_person].append(sim)
+                
+                # Calculate and display results for this person
+                accuracy = (person_results["correct_identifications"] / 
+                           person_results["total_queries"]) if person_results["total_queries"] > 0 else 0
+                
+                avg_sim_to_self = np.mean(person_results["similarities_to_self"]) \
+                                 if person_results["similarities_to_self"] else 0
+                
+                print(f"  Accuracy: {accuracy:.2%} ({person_results['correct_identifications']}/{person_results['total_queries']})")
+                print(f"  Average similarity to self: {avg_sim_to_self:.4f}")
+                
+                if person_results["similarities_to_others"]:
+                    print("  Average similarities to others:")
+                    for other_person, sims in person_results["similarities_to_others"].items():
+                        avg_sim = np.mean(sims)
+                        print(f"    vs {other_person}: {avg_sim:.4f}")
+                
+                detailed_results["per_person_results"][query_person] = person_results
+            
+            # Calculate overall statistics
+            total_queries = sum(results["total_queries"] for results in detailed_results["per_person_results"].values())
+            total_correct = sum(results["correct_identifications"] for results in detailed_results["per_person_results"].values())
+            overall_accuracy = total_correct / total_queries if total_queries > 0 else 0
+            
+            detailed_results["overall_stats"] = {
+                "overall_accuracy": overall_accuracy,
+                "total_queries": total_queries,
+                "total_correct": total_correct,
+                "avg_similarity_same_person": np.mean(all_similarities_same) if all_similarities_same else 0,
+                "avg_similarity_different_person": np.mean(all_similarities_diff) if all_similarities_diff else 0,
+                "similarity_separation": np.mean(all_similarities_same) - np.mean(all_similarities_diff) if all_similarities_same and all_similarities_diff else 0
+            }
+            
+            print("\n" + "="*80)
+            print("OVERALL RESULTS")
+            print("="*80)
+            print(f"Overall Accuracy: {overall_accuracy:.2%} ({total_correct}/{total_queries})")
+            if all_similarities_same:
+                print(f"Average similarity to same person: {np.mean(all_similarities_same):.4f}")
+            if all_similarities_diff:
+                print(f"Average similarity to different persons: {np.mean(all_similarities_diff):.4f}")
+            if all_similarities_same and all_similarities_diff:
+                separation = np.mean(all_similarities_same) - np.mean(all_similarities_diff)
+                print(f"Similarity separation (higher is better): {separation:.4f}")
+            
+            # Save detailed results
             timestamp = time.strftime("%Y%m%d_%H%M%S")
-            results_file = f"../dataset/test_results_{timestamp}.json"
+            results_file = f"../dataset/detailed_test_results_{timestamp}.json"
             with open(results_file, "w") as f:
-                json.dump(results, f, indent=2)
-            print(f"Detailed results saved to: {results_file}")
+                json.dump(detailed_results, f, indent=2, default=str)
+            print(f"\nDetailed results saved to: {results_file}")
+            
+            # Store for comparison
+            self.before_finetune_results = detailed_results
             
         except Exception as e:
             print(f"Testing failed: {e}")
+            import traceback
+            traceback.print_exc()
 
     def finetune_model(self):
         """Fine-tune the model on custom dataset."""
@@ -361,11 +487,10 @@ class CLIInterface:
             print(f"  Batch Size: {batch_size}")
             print("\nThis may take several minutes...")
             
-            # Test before fine-tuning (if test data exists)
-            before_results = None
-            if os.path.exists("../dataset/query") and os.path.exists("../dataset/gallery"):
+            # Test before fine-tuning if not already done
+            if self.before_finetune_results is None:
                 print("\nTesting model before fine-tuning...")
-                before_results = tester.test_model_accuracy()
+                self.test_current_model()
             
             # Fine-tune
             history = tester.fine_tune_model(
@@ -374,61 +499,13 @@ class CLIInterface:
                 batch_size=batch_size
             )
             
-            # Test after fine-tuning
-            after_results = None
-            if os.path.exists("../dataset/query") and os.path.exists("../dataset/gallery"):
-                print("\nTesting model after fine-tuning...")
-                after_results = tester.test_model_accuracy()
-            
-            # Save results
-            timestamp = time.strftime("%Y%m%d_%H%M%S")
-            
-            if before_results and after_results:
-                comparison = {
-                    "before_finetuning": before_results,
-                    "after_finetuning": after_results,
-                    "improvement": {
-                        "accuracy": after_results["accuracy"] - before_results["accuracy"],
-                        "avg_similarity": after_results["average_similarity"] - before_results["average_similarity"]
-                    }
-                }
-                
-                comparison_file = f"../dataset/comparison_{timestamp}.json"
-                with open(comparison_file, "w") as f:
-                    json.dump(comparison, f, indent=2)
-                
-                print(f"\n=== Fine-tuning Results ===")
-                print(f"Accuracy before: {before_results['accuracy']:.4f}")
-                print(f"Accuracy after:  {after_results['accuracy']:.4f}")
-                print(f"Improvement:     {comparison['improvement']['accuracy']:.4f}")
+            print("\nFine-tuning completed successfully!")
+            print("You can now test the improved model using option 1, then compare results using option 3.")
             
         except Exception as e:
             print(f"Fine-tuning failed: {e}")
-
-    def compare_models(self):
-        """Compare model performance before and after fine-tuning."""
-        print("\n=== Model Comparison ===")
-        
-        # Find latest comparison file
-        comparison_files = glob.glob("../dataset/comparison_*.json")
-        if not comparison_files:
-            print("No comparison data found. Please run fine-tuning first.")
-            return
-        
-        # Get the most recent comparison
-        latest_file = max(comparison_files, key=os.path.getctime)
-        
-        try:
-            with open(latest_file, "r") as f:
-                comparison = json.load(f)
-            
-            print(f"\nOverall Performance:")
-            print(f"  Before Fine-tuning - Accuracy: {comparison['before_finetuning']['accuracy']:.4f}")
-            print(f"  After Fine-tuning  - Accuracy: {comparison['after_finetuning']['accuracy']:.4f}")
-            print(f"  Improvement: +{comparison['improvement']['accuracy']:.4f}")
-            
-        except Exception as e:
-            print(f"Error reading comparison data: {e}")
+            import traceback
+            traceback.print_exc()
 
     def show_dataset_stats(self):
         """Show statistics about the current dataset."""
@@ -447,12 +524,15 @@ class CLIInterface:
                             if os.path.isdir(os.path.join(split_path, d)) and d.startswith('person_')]
                 
                 total_images = 0
-                for person_dir in person_dirs:
+                print(f"\n{split_name}:")
+                for person_dir in sorted(person_dirs):
                     person_path = os.path.join(split_path, person_dir)
                     image_files = glob.glob(os.path.join(person_path, "*.jpg")) + \
                                 glob.glob(os.path.join(person_path, "*.png"))
-                    total_images += len(image_files)
+                    person_image_count = len(image_files)
+                    total_images += person_image_count
+                    print(f"  {person_dir}: {person_image_count} images")
                 
-                print(f"{split_name}: {len(person_dirs)} persons, {total_images} images")
+                print(f"  Total: {len(person_dirs)} persons, {total_images} images")
             else:
                 print(f"{split_name}: Not found")

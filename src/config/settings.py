@@ -21,7 +21,7 @@ class Settings:
         self.person_image_min_count = 100
         
         # Detection settings
-        self.detection_confidence = 0.75
+        self.detection_confidence = 0.7
 
         # Tracking settings
-        self.regocnition_confidence = 0.75
+        self.regocnition_confidence = 0.65

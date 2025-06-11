@@ -43,6 +43,7 @@ class ModelManager:
         os.makedirs(os.path.join(person_dir, "raw"), exist_ok=True)
         os.makedirs(os.path.join(person_dir, "gallery"), exist_ok=True)
         return person_dir
+    
 
     def save_image(self, person_name, image):
         """

@@ -2,17 +2,6 @@
 
 class PersonFollowingSystem:
     def __init__(self):
-        self.settings = None
-        self.camera = None
-        self.robot = None
-        self.detector = None
-        self.feature_extractor = None
-        self.model_manager = None
-        self.recognizer = None
-        self.visualizer = None
-        self.ui = None
-
-    def initialize(self):
         self.settings = self.init_settings()
         self.camera = self.init_camera()
         self.robot = self.init_robot()
@@ -21,6 +10,7 @@ class PersonFollowingSystem:
         self.model_manager = self.init_model_manager()
         self.recognizer = self.init_recognizer()
         self.visualizer = self.init_visualizer()
+        self.ui = self.init_ui()
 
     def init_settings(self):
         from config.settings import Settings
@@ -59,7 +49,7 @@ class PersonFollowingSystem:
         from core.visualization import Visualizer
         return Visualizer()
 
-    def attach_ui(self):
+    def init_ui(self):
         from ui.cli import CLIInterface
         self.ui = CLIInterface(self)
         return self.ui

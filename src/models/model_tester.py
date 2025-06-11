@@ -196,7 +196,7 @@ class ModelTester:
         self._print_test_results(results)
         return results
     
-    def fine_tune_model(self, epochs=10, learning_rate=0.0001, batch_size=16):
+    def fine_tune_model(self, epochs=10, learning_rate=0.0001, batch_size=16, save_dir="."):
         """
         Fine-tune the OSNet model on your custom dataset.
         
@@ -204,6 +204,7 @@ class ModelTester:
             epochs: Number of training epochs
             learning_rate: Learning rate for fine-tuning
             batch_size: Training batch size
+            save_dir: Directory to save the fine-tuned model (default: current directory)
             
         Returns:
             dict: Training history
@@ -227,7 +228,7 @@ class ModelTester:
         
         # Filter out classifier layer
         pretrained_dict = {k: v for k, v in pretrained_dict.items() 
-                          if k in model_dict and 'classifier' not in k}
+                        if k in model_dict and 'classifier' not in k}
         model_dict.update(pretrained_dict)
         model.load_state_dict(model_dict)
         
@@ -301,14 +302,32 @@ class ModelTester:
             print(f"  Train Loss: {train_loss/len(train_loader):.4f}, Train Acc: {train_acc:.2f}%")
             print(f"  Val Loss: {val_loss/len(val_loader):.4f}, Val Acc: {val_acc:.2f}%")
         
-        # Save fine-tuned model
-        model_save_path = os.path.join(self.dataset_path, "fine_tuned_osnet.pth")
+        # Save fine-tuned model with custom name in specified directory
+        model_save_path = os.path.join(save_dir, "osnet_x1_0_fine_tuned.pth")
         torch.save(model.state_dict(), model_save_path)
         print(f"Fine-tuned model saved to: {model_save_path}")
         
-        # Update the feature extractor with fine-tuned model
-        self.feature_extractor.model.load_state_dict(model.state_dict())
-        print("Feature extractor updated with fine-tuned weights")
+        # **FIXED: Only load feature extraction layers, not classifier**
+        # Get the current feature extractor's state dict
+        original_state_dict = self.feature_extractor.model.state_dict()
+        
+        # Get the fine-tuned model's state dict
+        finetuned_state_dict = model.state_dict()
+        
+        # Create updated state dict by only copying non-classifier layers
+        updated_state_dict = {}
+        for key, value in original_state_dict.items():
+            if 'classifier' not in key and key in finetuned_state_dict:
+                # Use fine-tuned weights for feature extraction layers
+                updated_state_dict[key] = finetuned_state_dict[key]
+            else:
+                # Keep original classifier weights (for ImageNet classes)
+                updated_state_dict[key] = value
+        
+        # Load the updated weights
+        self.feature_extractor.model.load_state_dict(updated_state_dict)
+        print("Feature extractor updated with fine-tuned feature extraction weights")
+        print("(Classifier layer kept original to maintain compatibility)")
         
         return history
     

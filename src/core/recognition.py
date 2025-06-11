@@ -1,8 +1,7 @@
 import cv2
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
-import mediapipe as mp
-
+from sklearn.metrics.pairwise import euclidean_distances
 
 class PersonRecognition:
     """Person recognition class: detect -> extract feature -> match to gallery."""
@@ -17,47 +16,7 @@ class PersonRecognition:
         """
         self.feature_extractor = feature_extractor
         self.regocnition_confidence = settings.regocnition_confidence
-        self.mp_selfie_segmentation = mp.solutions.selfie_segmentation.SelfieSegmentation(model_selection=1)
     
-    # TODO: try to improve the performance of this function
-    def _normalize_brightness(self, image, target_mean=128, target_std=50):
-            """
-            Normalize brightness across images by shifting to a target mean and std.
-            """
-
-            if image is None:
-                return None
-            
-            img = image.astype(np.float32)
-
-            current_mean = np.mean(img)
-            current_std = np.std(img)
-
-            if current_std < 1e-6:
-                return image  # avoid division by near-zero
-
-            # Normalize to zero-mean, unit-std
-            img = (img - current_mean) / current_std
-
-            # Scale to target
-            img = img * target_std + target_mean
-            img = np.clip(img, 0, 255).astype(np.uint8)
-
-            return img
-
-    # TODO: try to improve the performance of this function
-    def _remove_background(self, image):
-        """Remove background using MediaPipe SelfieSegmentation."""
-        rgb_img = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        results = self.mp_selfie_segmentation.process(rgb_img)
-
-        if not results.segmentation_mask.any():
-            return image  # fallback
-
-        mask = results.segmentation_mask > 0.1
-        bg_removed = np.where(mask[..., None], image, (0, 0, 0)).astype(np.uint8)
-        return bg_removed
-
     def recognize_target(self, frame, detections, gallery_features):
         """
         Recognize target in the frame.  
@@ -83,20 +42,15 @@ class PersonRecognition:
                 continue
 
             # Extract feature and compare
-            feature = self.feature_extractor.extract(self._normalize_brightness(self._remove_background(person_img)))
+            feature = self.feature_extractor.extract(person_img)
             if feature is None:
                 continue
             
             # Use cosine similarity to compare direction (pattern) of feature vectors, ignoring magnitude differences caused by lighting or scale
             similarities = cosine_similarity(feature, gallery_features)[0]
 
-            # Take the top-K most similar scores (up to 50)
-            # - This reduces the influence of outliers and weak matches     
-            top_k = min(50, len(similarities))
-            top_k_similarities = np.sort(similarities)[-top_k:]
-
-            # Compute confidence as the average of top-K similarities
-            confidence = np.mean(top_k_similarities)
+            # Use max similarity (like in test code)
+            confidence = np.max(similarities)
 
             is_target = (confidence >= self.regocnition_confidence)
 
