@@ -10,6 +10,7 @@ class PersonFollowingSystem:
         self.model_manager = self.init_model_manager()
         self.recognizer = self.init_recognizer()
         self.visualizer = self.init_visualizer()
+        self.person_follower = self.init_person_follower()
         self.ui = self.init_ui()
 
     def init_settings(self):
@@ -20,11 +21,11 @@ class PersonFollowingSystem:
         return settings
 
     def init_camera(self):
-        from hardware.camera import Camera
+        from go2_interface.camera import Camera
         return Camera(self.settings)
 
     def init_robot(self):
-        from hardware.robot import RobotController
+        from go2_interface.robot import RobotController
         return RobotController(self.settings.robot_params)
 
     def init_detector(self):
@@ -41,13 +42,15 @@ class PersonFollowingSystem:
     
     def init_model_manager(self):
         from models.model_manager import ModelManager
-        manager = ModelManager(self.settings)
-        manager.set_feature_extractor(self.feature_extractor)
-        return manager
+        return ModelManager(self.settings, self.camera, self.detector, self.feature_extractor)
 
     def init_visualizer(self):
         from core.visualization import Visualizer
         return Visualizer()
+    
+    def init_person_follower(self):
+        from core.follower import PersonFollower
+        return PersonFollower(self.robot, self.recognizer, self.visualizer, self.camera, self.detector, self.model_manager)
 
     def init_ui(self):
         from ui.cli import CLIInterface

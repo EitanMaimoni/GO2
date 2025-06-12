@@ -18,7 +18,7 @@ class Settings:
         self.camera_timeout = 3.0
         
         # Person recognition settings
-        self.person_image_min_count = 100
+        self.person_image_min_count = 50
         
         # Detection settings
         self.detection_confidence = 0.7

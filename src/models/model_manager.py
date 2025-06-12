@@ -3,21 +3,25 @@ import cv2
 import numpy as np
 from datetime import datetime
 from tqdm import tqdm
+import shutil
 
 class ModelManager:
     """Manager for person recognition models."""
     
-    def __init__(self, settings):
+    def __init__(self, settings, camera, detector, feature_extractor):
         """
         Initialize model manager.
         
         Args:
             settings: Application settings
         """
+        self.camera = camera
+        self.detector = detector
         self.base_dir = settings.persons_dir
         self.min_images = settings.person_image_min_count
         os.makedirs(self.base_dir, exist_ok=True)
-        self.feature_extractor = None  # Will be set externally
+        self.feature_extractor = feature_extractor
+
     
     def set_feature_extractor(self, extractor):
         """
@@ -44,6 +48,72 @@ class ModelManager:
         os.makedirs(os.path.join(person_dir, "gallery"), exist_ok=True)
         return person_dir
     
+    def create_model(self):
+        name = input("Enter person name: ").strip()
+
+        self.create_dataset(name)
+        self.capture_mode = True
+        self.capture_count = 0
+
+        cv2.namedWindow("Tracking", cv2.WINDOW_NORMAL)
+        while True:
+            frame = self.camera.get_frame()
+            if frame is None:
+                continue
+
+            person_img, _ = self.detector.get_first_person(frame)
+
+            display_img = person_img if person_img is not None else frame
+            cv2.imshow("Tracking", display_img)
+
+            key = cv2.waitKey(1) & 0xFF
+            if key == 13:  # ENTER
+                if person_img is not None:
+                    self.save_image(name, person_img)
+                    self.capture_count += 1
+                    print(f"Saved image {self.capture_count}")
+            elif key == 27:  # ESC
+                print("Training model...")
+                try:
+                    self.train_model_osnet(name)
+                    print(f"Model trained successfully for {name}.")
+                except Exception as e:
+                    print(f"Training failed: {e}")
+                cv2.destroyWindow("Tracking")
+                break
+
+    def delete_model(self):
+        """
+        Delete a person model and all associated data.
+        
+        Returns:
+            bool: True if deletion was successful, False otherwise
+        """
+        models = self.list_models()
+        if not models:
+            print("No trained models available.")
+            return
+
+        print("Available models:")
+        for i, name in enumerate(models):
+            print(f"{i + 1}. {name}")
+        
+        idx = int(input("Select model to delete: ")) - 1
+
+        if idx < 0 or idx >= len(models):
+            print("Invalid selection.")
+            return False
+        
+        name = models[idx]
+        person_dir = os.path.join(self.base_dir, name)
+        
+        try:
+            shutil.rmtree(person_dir)
+            print(f"Model {name} deleted successfully.")
+            return True
+        except Exception as e:
+            print(f"Failed to delete model {name}: {e}")
+            return False
 
     def save_image(self, person_name, image):
         """
@@ -79,9 +149,7 @@ class ModelManager:
                 models.append(name)
         return models
     
-    # TODO: Add a delete method to delete a person's model
-    def delete_model(self, person_name):
-        pass
+    
     
     # TODO: Maybe its better to blur the background (or something similar)
     def train_model_osnet(self, person_name):
