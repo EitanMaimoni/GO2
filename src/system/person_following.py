@@ -2,17 +2,6 @@
 
 class PersonFollowingSystem:
     def __init__(self):
-        self.settings = None
-        self.camera = None
-        self.robot = None
-        self.detector = None
-        self.feature_extractor = None
-        self.model_manager = None
-        self.recognizer = None
-        self.visualizer = None
-        self.ui = None
-
-    def initialize(self):
         self.settings = self.init_settings()
         self.camera = self.init_camera()
         self.robot = self.init_robot()
@@ -21,6 +10,8 @@ class PersonFollowingSystem:
         self.model_manager = self.init_model_manager()
         self.recognizer = self.init_recognizer()
         self.visualizer = self.init_visualizer()
+        self.person_follower = self.init_person_follower()
+        self.ui = self.init_ui()
 
     def init_settings(self):
         from config.settings import Settings
@@ -30,11 +21,11 @@ class PersonFollowingSystem:
         return settings
 
     def init_camera(self):
-        from hardware.camera import Camera
+        from go2_interface.camera import Camera
         return Camera(self.settings)
 
     def init_robot(self):
-        from hardware.robot import RobotController
+        from go2_interface.robot import RobotController
         return RobotController(self.settings.robot_params)
 
     def init_detector(self):
@@ -47,25 +38,25 @@ class PersonFollowingSystem:
     
     def init_recognizer(self):
         from core.recognition import PersonRecognition
-        return PersonRecognition(self.detector, self.feature_extractor, self.settings)
+        return PersonRecognition(self.feature_extractor, self.settings)
     
     def init_model_manager(self):
         from models.model_manager import ModelManager
-        manager = ModelManager(self.settings)
-        manager.set_feature_extractor(self.feature_extractor)
-        return manager
+        return ModelManager(self.settings, self.camera, self.detector, self.feature_extractor)
 
     def init_visualizer(self):
         from core.visualization import Visualizer
         return Visualizer()
+    
+    def init_person_follower(self):
+        from core.follower import PersonFollower
+        return PersonFollower(self.robot, self.recognizer, self.visualizer, self.camera, self.detector, self.model_manager)
 
-    def attach_ui(self):
-        from ui.gui import GUIInterface
-        self.ui = GUIInterface(self)
+    def init_ui(self):
+        from ui.cli import CLIInterface
+        self.ui = CLIInterface(self)
         return self.ui
 
     def cleanup(self):
-        if self.camera:
-            self.camera.release()
         if self.robot:
             self.robot.stop()

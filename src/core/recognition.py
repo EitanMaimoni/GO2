@@ -1,26 +1,23 @@
 import cv2
 import numpy as np
-import math
-import time
 from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.metrics.pairwise import euclidean_distances
 
 class PersonRecognition:
     """Person recognition class: detect -> extract feature -> match to gallery."""
 
-    def __init__(self, detector, feature_extractor, settings):
+    def __init__(self, feature_extractor, settings):
         """
         Initialize person tracker.
         
         Args:
-            detector: PersonDetector instance
             feature_extractor: FeatureExtractor instance
-            regocnition_confidence: Threshold for cosine similarity
+            settings: Settings instance
         """
-        self.detector = detector
         self.feature_extractor = feature_extractor
         self.regocnition_confidence = settings.regocnition_confidence
-
-    def recognize_target(self, frame, gallery_features):
+    
+    def recognize_target(self, frame, detections, gallery_features):
         """
         Recognize target in the frame.  
 
@@ -37,10 +34,7 @@ class PersonRecognition:
         visualized_frame = frame.copy()
         target_detection = None
 
-        # TODO: Compare all confidence scores (between each person detected) and select the best one (for getting the best match)
-        # another option is to take the first one detected and not checking the other (for getting the fastest response)
-        detections = self.detector.detect_persons(frame)
-        print(f"[Detection] Found {len(detections)} persons")
+        # TODO: Use threads to compute scores in parallel, pick the best one.
         for detection in detections:
             x, y, w, h = detection['box']
             person_img = frame[y:y+h, x:x+w]
@@ -48,16 +42,17 @@ class PersonRecognition:
                 continue
 
             # Extract feature and compare
-            # TODO: Maybe its better to resize to target size (force exact dimensions, the model trained on this)
             feature = self.feature_extractor.extract(person_img)
             if feature is None:
                 continue
             
+            # Use cosine similarity to compare direction (pattern) of feature vectors, ignoring magnitude differences caused by lighting or scale
             similarities = cosine_similarity(feature, gallery_features)[0]
-            top_k = min(50, len(similarities))
-            top_k_similarities = np.sort(similarities)[-top_k:]
-            confidence = np.mean(top_k_similarities)
-            is_target = confidence >= self.regocnition_confidence
+
+            # Use max similarity (like in test code)
+            confidence = np.max(similarities)
+
+            is_target = (confidence >= self.regocnition_confidence)
 
             color = (0, 255, 0) if is_target else (0, 0, 255)
             cv2.rectangle(visualized_frame, (x, y), (x+w, y+h), color, 2)

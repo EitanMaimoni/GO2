@@ -18,11 +18,10 @@ class Settings:
         self.camera_timeout = 3.0
         
         # Person recognition settings
-        self.person_image_min_count = 100
-        self.target_capture_size = (512, 1024)
+        self.person_image_min_count = 50
         
         # Detection settings
-        self.detection_confidence = 0.75
+        self.detection_confidence = 0.7
 
         # Tracking settings
-        self.regocnition_confidence = 0.82
+        self.regocnition_confidence = 0.65
