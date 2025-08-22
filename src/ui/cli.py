@@ -1,6 +1,4 @@
-import cv2
-import numpy as np
-import time
+from models.finetune_osnet import FinetuneOSNet
 
 class CLIInterface:
     def __init__(self, system):
@@ -13,7 +11,8 @@ class CLIInterface:
             print("1. Create Person Model")
             print("2. Follow Person")
             print("3. Delete Model")
-            print("4. Exit")
+            print("4. OSNET Training")
+            print("5. Exit")
 
             choice = input("Select an option: ").strip()
 
@@ -24,6 +23,9 @@ class CLIInterface:
             elif choice == "3":
                 self.system.model_manager.delete_model()
             elif choice == "4":
+                finetune_osnet = FinetuneOSNet(self.system)
+                finetune_osnet.run()
+            elif choice == "5":
                 self.system.cleanup()
                 print("Goodbye.")
                 break
